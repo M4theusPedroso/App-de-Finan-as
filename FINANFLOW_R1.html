@@ -1,0 +1,3192 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FinanFlow - Controle Financeiro, Metas & IA</title>
+
+    <!-- Meta Tags PWA para instalação no iOS (Safari) e Android (Chrome) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FinanFlow">
+    <meta name="theme-color" content="#020617">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons 6.5.1 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            bg: '#020617',        // Slate 950 ultra escuro
+                            card: '#0f172a',      // Slate 900 card
+                            cardHover: '#1e293b',
+                            border: '#1e293b',    // Slate 800
+                            input: '#030712'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        
+        .modal-backdrop {
+            background-color: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(8px);
+        }
+        
+        /* Neon Efeitos de Brilho Visual */
+        .glow-emerald { box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.25); }
+        .glow-rose { box-shadow: 0 0 20px -5px rgba(244, 63, 94, 0.25); }
+        .glow-cyan { box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.25); }
+        .glow-violet { box-shadow: 0 0 20px -5px rgba(139, 92, 246, 0.25); }
+        .glow-amber { box-shadow: 0 0 20px -5px rgba(245, 158, 11, 0.25); }
+        .glow-indigo { box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.25); }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-dark-bg text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500 selection:text-slate-950">
+
+    <!-- CONTAINER DE NOTIFICAÇÕES TOAST -->
+    <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- BACKDROP MOBILE SIDEBAR -->
+    <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden"></div>
+
+    <!-- ================= 1. TOP HEADER (BARRA SUPERIOR FIXA) ================= -->
+    <header class="sticky top-0 z-30 bg-dark-bg/90 backdrop-blur-xl border-b border-dark-border px-4 sm:px-6 py-3 transition-all duration-200">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <!-- Lado Esquerdo: Brand Logo + Divisor + Badge da Aba Ativa -->
+            <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+                <!-- Mobile Menu Toggle Button -->
+                <button id="mobile-menu-toggle" class="md:hidden p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-900 transition" aria-label="Abrir Menu">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+
+                <!-- Brand Logo -->
+                <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchTab('dashboard')">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-wallet text-sm"></i>
+                    </div>
+                    <div class="hidden xs:block">
+                        <span class="font-black text-lg tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">FinanFlow</span>
+                    </div>
+                </div>
+
+                <!-- Divisor Vertical -->
+                <div class="h-5 w-px bg-dark-border hidden sm:block"></div>
+
+                <!-- Active Tab Badge (Pílula da Aba Ativa) -->
+                <div id="top-active-tab-badge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-dark-border text-xs font-semibold text-slate-300">
+                    <i id="top-tab-icon" class="fa-solid fa-chart-pie text-emerald-400"></i>
+                    <span id="top-tab-name">Dashboard</span>
+                </div>
+            </div>
+
+            <!-- Lado Direito: Olho Mágico + Seletor Mês/Ano + Status Gemini API -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- MODO PRIVACIDADE (OLHO MÁGICO) -->
+                <button onclick="togglePrivacyMode()" id="btn-privacy-toggle" class="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-900 transition flex items-center justify-center" title="Modo Privacidade (Olho Mágico)">
+                    <i id="privacy-icon" class="fa-solid fa-eye text-emerald-400 text-sm"></i>
+                </button>
+
+                <!-- Seletor de Período Mês/Ano com Capitalização -->
+                <div class="flex items-center gap-2 bg-dark-card border border-dark-border px-3 py-1.5 rounded-full shadow-inner hover:border-slate-700 transition">
+                    <i class="fa-regular fa-calendar text-emerald-400 text-xs"></i>
+                    <input type="month" id="filter-month" class="bg-transparent text-emerald-400 text-xs font-bold focus:outline-none cursor-pointer capitalize">
+                </div>
+
+                <!-- Status da API Gemini -->
+                <button onclick="openApiKeyModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-dark-card border border-dark-border hover:border-slate-700 text-slate-300 text-xs font-semibold transition group" title="Configurar Chave Gemini API">
+                    <i class="fa-solid fa-key text-amber-400 text-xs group-hover:rotate-45 transition-transform"></i>
+                    <span class="hidden md:inline">Gemini AI</span>
+                    <span id="api-status-dot" class="w-2 h-2 rounded-full bg-rose-500"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+
+    <!-- BODY LAYOUT (SIDEBAR + CONTEÚDO) -->
+    <div class="flex-1 max-w-7xl w-full mx-auto flex">
+
+        <!-- ================= 2. MENU LATERAL DE 7 ABAS (SEM NUMERAÇÃO) ================= -->
+        <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-dark-card border-r border-dark-border text-slate-300 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+            
+            <!-- Header da Sidebar com Logo e Marca -->
+            <div class="p-4 border-b border-dark-border flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-wallet text-sm"></i>
+                    </div>
+                    <div>
+                        <span class="font-black text-base tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">FinanFlow</span>
+                        <span class="block text-[9px] text-slate-500 font-extrabold tracking-wider uppercase">AI Financial Pro</span>
+                    </div>
+                </div>
+                <button id="close-sidebar-btn" class="text-slate-400 hover:text-white md:hidden" aria-label="Fechar Menu">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Navegação Principal -->
+            <nav class="flex-1 p-3 space-y-1.5 overflow-y-auto">
+                <p class="px-3 pt-2 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Módulos</p>
+
+                <button onclick="switchTab('dashboard')" id="nav-btn-dashboard" class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-chart-pie text-sm w-5 text-center"></i>
+                    <span>Dashboard</span>
+                </button>
+
+                <button onclick="switchTab('lancamentos')" id="nav-btn-lancamentos" class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition">
+                    <i class="fa-solid fa-plus-circle text-sm w-5 text-center"></i>
+                    <span>Lançamentos</span>
+                </button>
+
+                <button onclick="switchTab('historico')" id="nav-btn-historico" class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition">
+                    <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center"></i>
+                    <span>Histórico</span>
+                </button>
+
+                <button onclick="switchTab('limites')" id="nav-btn-limites" class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition">
+                    <i class="fa-solid fa-sliders text-sm w-5 text-center"></i>
+                    <span>Limite de Gastos</span>
+                </button>
+
+                <button onclick="switchTab('dividas')" id="nav-btn-dividas" class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition relative">
+                    <i class="fa-solid fa-scale-balanced text-sm w-5 text-center text-rose-400"></i>
+                    <span>Controle Financeiro</span>
+                </button>
+
+                <button onclick="switchTab('metas')" id="nav-btn-metas" class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition relative">
+                    <i class="fa-solid fa-bullseye text-sm w-5 text-center text-indigo-400"></i>
+                    <span>Metas & Objetivos</span>
+                    <span id="nav-badge-metas" class="ml-auto text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold px-1.5 py-0.5 rounded-full">Reserva</span>
+                </button>
+
+                <button onclick="switchTab('assistente')" id="nav-btn-assistente" class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition relative">
+                    <i class="fa-solid fa-robot text-sm w-5 text-center text-cyan-400"></i>
+                    <span>Assistente IA</span>
+                    <span class="ml-auto text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold px-1.5 py-0.5 rounded-full">Gemini</span>
+                </button>
+            </nav>
+
+            <!-- Menu Inferior de Backup e Opções -->
+            <div class="p-3 border-t border-dark-border bg-slate-950/60 space-y-2">
+                <div class="relative">
+                    <button id="btn-tools-menu" type="button" class="w-full py-2 px-3 bg-dark-card hover:bg-slate-900 text-slate-400 hover:text-slate-200 rounded-xl text-[11px] font-medium transition border border-dark-border flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-emerald-400"></i>
+                            <span>Opções & Backup</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-up text-[10px] text-slate-500"></i>
+                    </button>
+                    <div id="tools-dropdown" class="hidden absolute bottom-11 left-0 right-0 bg-dark-card rounded-2xl shadow-2xl border border-dark-border py-2 z-50">
+                        <button onclick="loadDemoData()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> Carregar Dados Demo
+                        </button>
+                        <button onclick="exportJSON()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-file-export text-slate-400"></i> Exportar Backup (JSON)
+                        </button>
+                        <button onclick="exportCSV()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-file-csv text-slate-400"></i> Exportar Excel (CSV)
+                        </button>
+                        <label class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition">
+                            <i class="fa-solid fa-file-import text-slate-400"></i> Importar (JSON)
+                            <input type="file" id="import-file" accept=".json" class="hidden" onchange="importJSON(event)">
+                        </label>
+                        <div class="border-t border-dark-border my-1"></div>
+                        <button onclick="confirmResetAll()" class="w-full text-left px-4 py-2 text-xs text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-trash-can"></i> Zerar Todos os Dados
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ================= 3. CONTEÚDO PRINCIPAL DAS ABAS ================= -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+
+            <!-- ================= ABA 1: DASHBOARD PRINCIPAL ================= -->
+            <div id="tab-view-dashboard" class="space-y-8">
+                <!-- Page Header Interno -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-100 tracking-tight">Visão Geral Financeira</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Acompanhe seu patrimônio, balanço mensal, reserva de emergência e diagnóstico por IA.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="switchTab('lancamentos')" class="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Novo Lançamento
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cards de Resumo Principais -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <!-- Saldo Acumulado -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-cyan relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Saldo Acumulado</span>
+                            <div class="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="card-total-balance" class="text-2xl font-black text-slate-100 tracking-tight">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-globe text-cyan-400"></i> Histórico total
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Receitas do Mês -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-emerald relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">Receitas</span>
+                            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-arrow-trend-up"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="card-monthly-income" class="text-2xl font-black text-emerald-400 tracking-tight">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check text-emerald-400"></i> Entradas no mês
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Despesas do Mês -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-rose relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-rose-400">Despesas</span>
+                            <div class="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-arrow-trend-down"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="card-monthly-expenses" class="text-2xl font-black text-rose-400 tracking-tight">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-circle-minus text-rose-400"></i> Saídas no mês
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Taxa de Economia -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-violet relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-violet-400">Poupança %</span>
+                            <div class="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-piggy-bank"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="card-savings-rate" class="text-2xl font-black text-violet-400 tracking-tight">0%</h3>
+                            <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-percent text-violet-400"></i> Taxa economizada
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Parcelas de Dívidas / DTI -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-amber relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">Dívidas (Mês)</span>
+                            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="card-monthly-debt-installments" class="text-2xl font-black text-amber-400 tracking-tight">R$ 0,00</h3>
+                            <p id="card-dti-summary" class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-percent text-amber-400"></i> DTI: 0% da renda
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- WIDGET DESTACADO: PROGRESSO DA RESERVA DE EMERGÊNCIA -->
+                <div id="dashboard-emergency-widget" class="bg-gradient-to-r from-slate-900 via-dark-card to-slate-950 p-5 rounded-2xl border border-indigo-500/30 shadow-xl glow-indigo flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4 w-full md:w-auto">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-400">Status da Reserva de Emergência</span>
+                            <h4 id="dash-emergency-title" class="text-sm font-extrabold text-slate-100">Reserva de Emergência</h4>
+                            <p id="dash-emergency-values" class="text-xs text-slate-400">R$ 0,00 acumulados de R$ 0,00 objetivo</p>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-64 space-y-1">
+                        <div class="flex justify-between text-xs font-bold">
+                            <span class="text-slate-400">Progresso</span>
+                            <span id="dash-emergency-pct" class="text-indigo-400">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-dark-border">
+                            <div id="dash-emergency-bar" class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('metas')" class="w-full md:w-auto px-4 py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-bullseye"></i> Ver Metas
+                    </button>
+                </div>
+
+                <!-- CARD DIAGNÓSTICO RÁPIDO COM GEMINI AI -->
+                <div class="bg-gradient-to-r from-slate-900 via-dark-card to-slate-950 p-6 rounded-2xl border border-dark-border shadow-xl space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-dark-border pb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-500 text-slate-950 flex items-center justify-center text-lg font-bold shadow-lg shadow-cyan-500/20">
+                                <i class="fa-solid fa-brain"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+                                    Diagnóstico do Mês via IA
+                                    <span class="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">gemini-2.5-flash</span>
+                                </h4>
+                                <p class="text-xs text-slate-400">Análise inteligente automatizada das receitas, custos e orçamento.</p>
+                            </div>
+                        </div>
+                        <button onclick="generateAIDiagnosis()" id="btn-generate-ai-diagnosis" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-lg shadow-cyan-500/20 transition flex items-center gap-2 w-max shrink-0">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Análise
+                        </button>
+                    </div>
+
+                    <div id="ai-diagnosis-content" class="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-dark-border/60 min-h-[60px] flex items-center">
+                        <span>Clique no botão acima para receber a síntese financeira inteligente do seu mês.</span>
+                    </div>
+                </div>
+
+                <!-- GRÁFICOS (CHART.JS) -->
+                <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Gráfico 1: Rosca Despesas -->
+                    <div class="lg:col-span-5 bg-dark-card rounded-2xl border border-dark-border p-5 sm:p-6 shadow-xl flex flex-col">
+                        <div class="flex items-center justify-between border-b border-dark-border pb-3 mb-4">
+                            <h3 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-emerald-400"></i> Despesas por Categoria
+                            </h3>
+                            <span class="text-[11px] text-slate-400 font-medium">Mês Atual</span>
+                        </div>
+                        <div class="relative h-64 flex items-center justify-center my-auto">
+                            <canvas id="expensesDonutChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico 2: Barras Evolução -->
+                    <div class="lg:col-span-7 bg-dark-card rounded-2xl border border-dark-border p-5 sm:p-6 shadow-xl flex flex-col">
+                        <div class="flex items-center justify-between border-b border-dark-border pb-3 mb-4">
+                            <h3 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-chart-column text-cyan-400"></i> Evolução Financeira
+                            </h3>
+                            <span class="text-[11px] text-slate-400 font-medium">Últimos 6 Meses</span>
+                        </div>
+                        <div class="relative h-64 flex items-center justify-center my-auto">
+                            <canvas id="monthlyBarChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+
+            <!-- ================= ABA 2: LANÇAMENTOS ================= -->
+            <div id="tab-view-lancamentos" class="hidden space-y-8">
+                <!-- Page Header Interno -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-100 tracking-tight">Novos Lançamentos</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Registre suas entradas e saídas manualmente ou usando linguagem natural com IA.</p>
+                    </div>
+                    <button onclick="resetLancamentoForm()" class="px-3.5 py-2 border border-dark-border hover:bg-slate-900 text-slate-300 font-semibold text-xs rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i> Limpar Campos
+                    </button>
+                </div>
+
+                <!-- CAIXA DE LANÇAMENTO INTELIGENTE POR IA -->
+                <div class="bg-gradient-to-br from-slate-900 to-slate-950 p-6 rounded-2xl border border-cyan-500/30 shadow-2xl space-y-3 relative overflow-hidden">
+                    <div class="flex items-center gap-2 text-cyan-400 font-extrabold text-xs uppercase tracking-wider">
+                        <i class="fa-solid fa-bolt text-sm"></i> Lançamento Inteligente via Linguagem Natural (Gemini AI)
+                    </div>
+                    <p class="text-xs text-slate-400">Digite uma frase curta para que a IA extraia valor, tipo e categoria automaticamente:</p>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="text" id="ai-smart-input" placeholder='Ex: "Paguei 180 de energia via PIX hoje" ou "Recebi 3500 de salário"' class="flex-1 px-4 py-3 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                        <button onclick="processAISmartLancamento()" id="btn-ai-smart-submit" class="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-2 shrink-0">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Processar com IA
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    <!-- Formulário Manual -->
+                    <div class="lg:col-span-7 bg-dark-card rounded-2xl border border-dark-border p-6 shadow-xl space-y-6">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 border-b border-dark-border pb-3">Formulário Manual</h3>
+                        
+                        <form id="lancamento-form" onsubmit="handleTransactionSubmit(event)" class="space-y-5">
+                            <input type="hidden" id="trans-id">
+
+                            <div>
+                                <label class="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Tipo de Transação</label>
+                                <div class="grid grid-cols-2 gap-3 p-1.5 bg-dark-input rounded-xl text-xs font-bold border border-dark-border">
+                                    <button type="button" id="btn-type-despesa" onclick="setTransactionType('despesa')" class="py-3 rounded-lg text-rose-400 bg-rose-500/10 border border-rose-500/30 shadow-md transition flex items-center justify-center gap-2 font-bold">
+                                        <i class="fa-solid fa-circle-minus"></i> Saída (Despesa)
+                                    </button>
+                                    <button type="button" id="btn-type-receita" onclick="setTransactionType('receita')" class="py-3 rounded-lg text-slate-400 transition flex items-center justify-center gap-2 hover:text-slate-200">
+                                        <i class="fa-solid fa-circle-plus"></i> Entrada (Receita)
+                                    </button>
+                                </div>
+                                <input type="hidden" id="trans-type" value="despesa">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1.5">Descrição</label>
+                                <input type="text" id="trans-desc" placeholder="Ex: Mercado, Aluguel, Salário..." required class="w-full px-4 py-3 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1.5">Valor (R$)</label>
+                                    <input type="number" step="0.01" min="0.01" id="trans-amount" placeholder="0,00" required class="w-full px-4 py-3 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1.5">Data</label>
+                                    <input type="date" id="trans-date" required class="w-full px-4 py-3 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1.5">Categoria</label>
+                                    <select id="trans-category" required class="w-full px-4 py-3 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1.5">Forma de Pagamento</label>
+                                    <select id="trans-payment" required class="w-full px-4 py-3 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                                        <option value="PIX">PIX</option>
+                                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                        <option value="Dinheiro">Dinheiro</option>
+                                        <option value="Transferência">Transferência Bancária</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="pt-3 flex justify-end gap-3">
+                                <button type="submit" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-floppy-disk"></i> Salvar Lançamento
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Lista Últimos Cadastrados -->
+                    <div class="lg:col-span-5 bg-dark-card rounded-2xl border border-dark-border p-6 shadow-xl space-y-4">
+                        <div class="flex items-center justify-between border-b border-dark-border pb-3">
+                            <h3 class="font-bold text-slate-100 text-xs flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> Cadastrados Recentes
+                            </h3>
+                            <button onclick="switchTab('historico')" class="text-[11px] text-emerald-400 font-semibold hover:underline">Ver Histórico</button>
+                        </div>
+                        <div id="recent-lancamentos-list" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ================= ABA 3: HISTÓRICO DE TRANSAÇÕES ================= -->
+            <div id="tab-view-historico" class="hidden space-y-6">
+                <!-- Page Header Interno -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-100 tracking-tight">Histórico de Transações</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Consulte, filtre e exporte todas as suas movimentações financeiras.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportCSV()" class="px-3 py-2 bg-dark-card hover:bg-slate-900 border border-dark-border text-slate-300 text-xs font-semibold rounded-xl transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv text-emerald-400"></i> CSV
+                        </button>
+                        <button onclick="exportJSON()" class="px-3 py-2 bg-dark-card hover:bg-slate-900 border border-dark-border text-slate-300 text-xs font-semibold rounded-xl transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-export text-cyan-400"></i> JSON
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-dark-card rounded-2xl border border-dark-border p-5 shadow-xl space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                            <input type="text" id="search-input" placeholder="Buscar descrição..." class="w-full pl-9 pr-3 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <select id="filter-type" class="w-full px-3 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-300 focus:outline-none focus:border-emerald-500">
+                                <option value="ALL">Todos os Tipos</option>
+                                <option value="receita">Apenas Receitas</option>
+                                <option value="despesa">Apenas Despesas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="filter-category" class="w-full px-3 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-300 focus:outline-none focus:border-emerald-500">
+                                <option value="ALL">Todas as Categorias</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="sort-order" class="w-full px-3 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-300 focus:outline-none focus:border-emerald-500">
+                                <option value="date-desc">Data (Mais recentes)</option>
+                                <option value="date-asc">Data (Mais antigas)</option>
+                                <option value="amount-desc">Valor (Maior -> Menor)</option>
+                                <option value="amount-asc">Valor (Menor -> Maior)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[650px]">
+                            <thead>
+                                <tr class="border-b border-dark-border text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+                                    <th class="py-3 px-3">Lançamento</th>
+                                    <th class="py-3 px-3">Pagamento</th>
+                                    <th class="py-3 px-3">Data</th>
+                                    <th class="py-3 px-3 text-right">Valor</th>
+                                    <th class="py-3 px-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-list-body" class="divide-y divide-dark-border/60 text-xs"></tbody>
+                        </table>
+
+                        <div id="empty-state" class="hidden py-16 text-center">
+                            <div class="w-16 h-16 bg-slate-900 border border-dark-border text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                                <i class="fa-solid fa-inbox"></i>
+                            </div>
+                            <h4 class="text-sm font-bold text-slate-300">Nenhum lançamento encontrado</h4>
+                            <p class="text-xs text-slate-500 mt-1">Ajuste os filtros ou adicione movimentações no mês.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ================= ABA 4: LIMITE DE GASTOS ================= -->
+            <div id="tab-view-limites" class="hidden space-y-6">
+                <!-- Page Header Interno -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-100 tracking-tight">Limite de Gastos</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Defina tetos orçamentários por categoria e monitore estouros em tempo real.</p>
+                    </div>
+                    <button onclick="openBudgetModal()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i> Configurar Limites
+                    </button>
+                </div>
+
+                <div class="bg-dark-card rounded-2xl border border-dark-border p-6 shadow-xl">
+                    <div id="budget-list" class="space-y-6"></div>
+                </div>
+            </div>
+
+
+            <!-- ================= ABA 5: CONTROLE FINANCEIRO ================= -->
+            <div id="tab-view-dividas" class="hidden space-y-8">
+                <!-- Page Header Interno -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-100 tracking-tight">Controle Financeiro</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Monitore seu comprometimento de renda (DTI), passivos devedores e comprovantes de pagamento.</p>
+                    </div>
+                    <button onclick="openDebtModal()" class="px-4 py-2.5 bg-rose-500 hover:bg-rose-400 text-slate-950 text-xs font-extrabold rounded-xl shadow-lg shadow-rose-500/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Cadastrar Nova Dívida
+                    </button>
+                </div>
+
+                <!-- CARDS DE SAÚDE FINANCEIRA E DTI -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <!-- Score de Saúde Financeira -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl flex flex-col justify-between relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Score de Saúde</span>
+                            <div id="health-score-icon" class="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-baseline justify-between">
+                            <h3 id="health-score-val" class="text-3xl font-black text-emerald-400 tracking-tight">100 / 100</h3>
+                            <span id="health-score-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Excelente</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-2">Calculado via DTI, Poupança e Balanço.</p>
+                    </div>
+
+                    <!-- Taxa DTI -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl flex flex-col justify-between relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Comprometimento (DTI)</span>
+                            <div class="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-baseline justify-between">
+                            <h3 id="dti-percentage-val" class="text-3xl font-black text-rose-400 tracking-tight">0%</h3>
+                            <span id="dti-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Seguro</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-2">Parcelas do mês ÷ Renda mensal.</p>
+                    </div>
+
+                    <!-- Passivo Devedor -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl flex flex-col justify-between relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Passivo Devedor</span>
+                            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-vault"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="total-remaining-debt-val" class="text-2xl font-black text-slate-100 tracking-tight">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 mt-1">Saldo restante acumulado.</p>
+                        </div>
+                    </div>
+
+                    <!-- Progresso Geral -->
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl flex flex-col justify-between relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Quitado</span>
+                            <div class="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="overall-quit-progress-val" class="text-2xl font-black text-cyan-400 tracking-tight">100%</h3>
+                            <p class="text-[10px] text-slate-400 mt-1">% paga do montante contratado.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DIAGNÓSTICO GEMINI IA PARA DÍVIDAS -->
+                <div class="bg-gradient-to-r from-slate-900 via-dark-card to-slate-950 p-6 rounded-2xl border border-dark-border shadow-xl space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-dark-border pb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-slate-950 flex items-center justify-center text-lg font-bold shadow-lg shadow-rose-500/20">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+                                    Diagnóstico de Capacidade de Pagamento com IA
+                                    <span class="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-bold">gemini-2.5-flash</span>
+                                </h4>
+                                <p class="text-xs text-slate-400">Avaliação avançada sobre a compatibilidade da sua renda com suas dívidas ativas.</p>
+                            </div>
+                        </div>
+                        <button onclick="generateDebtAIDiagnosis()" id="btn-generate-debt-ai" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-xs font-bold shadow-lg shadow-rose-500/20 transition flex items-center gap-2 w-max shrink-0">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Analisar Dívidas & Renda
+                        </button>
+                    </div>
+
+                    <div id="ai-debt-diagnosis-content" class="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-dark-border/60 min-h-[60px] flex items-center">
+                        <span>Solicite uma análise do Gemini para saber se o que você ganha condiz com o nível atual de dívidas.</span>
+                    </div>
+                </div>
+
+                <!-- LISTA DE DÍVIDAS ATIVAS -->
+                <div class="bg-dark-card rounded-2xl border border-dark-border p-6 shadow-xl space-y-5">
+                    <div class="flex items-center justify-between border-b border-dark-border pb-3">
+                        <h3 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-rose-400"></i> Dívidas Ativas e Financiamentos
+                        </h3>
+                        <span id="debt-count-badge" class="text-xs text-slate-400 font-semibold">0 cadastradas</span>
+                    </div>
+
+                    <div id="debt-cards-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+
+                <!-- SIMULADOR BOLA DE NEVE VS AVALANCHE -->
+                <div class="bg-dark-card rounded-2xl border border-dark-border p-6 shadow-xl space-y-6">
+                    <div>
+                        <h3 class="font-bold text-slate-100 text-sm flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-lightbulb text-amber-400"></i> Estratégias Recomendadas de Quitação
+                        </h3>
+                        <p class="text-xs text-slate-400">Acelere a eliminação de dívidas organizando a ordem de pagamento suplementar.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Bola de Neve -->
+                        <div class="bg-slate-950/60 border border-dark-border p-5 rounded-2xl space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fa-solid fa-snowflake"></i> Método Bola de Neve
+                                </h4>
+                                <span class="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">Foco Psicológico</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Ordem por **menor saldo devedor**, para liquidar dívidas rapidamente e ganhar motivação.</p>
+                            <div id="snowball-list" class="space-y-2 pt-2"></div>
+                        </div>
+
+                        <!-- Avalanche -->
+                        <div class="bg-slate-950/60 border border-dark-border p-5 rounded-2xl space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-extrabold text-rose-400 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fa-solid fa-volcano"></i> Método Avalanche
+                                </h4>
+                                <span class="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-bold">Economia de Juros</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Ordem por **maior taxa de juros a.m.**, reduzindo o custo financeiro total do passivo.</p>
+                            <div id="avalanche-list" class="space-y-2 pt-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ================= ABA 6: METAS & OBJETIVOS ================= -->
+            <div id="tab-view-metas" class="hidden space-y-8">
+                <!-- Page Header Interno -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-100 tracking-tight">Metas & Objetivos Financeiros</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Planeje sua Reserva de Emergência, viagens, bens e projetos de vida com inteligência.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="planGoalsWithAI()" id="btn-plan-goals-ai" class="px-3.5 py-2.5 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Planejar Metas com IA
+                        </button>
+                        <button onclick="openGoalModal()" class="px-4 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Nova Meta
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CARDS RESUMO DE METAS -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-indigo relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Objetivado</span>
+                            <div class="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-crosshairs"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="goals-total-target" class="text-2xl font-black text-indigo-400 tracking-tight">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 mt-1">Soma de todos os objetivos</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-emerald relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">Total Acumulado</span>
+                            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-vault"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="goals-total-current" class="text-2xl font-black text-emerald-400 tracking-tight">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 mt-1">Já guardado/investido</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-amber relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">Faltante Total</span>
+                            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-hourglass-half"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="goals-total-remaining" class="text-2xl font-black text-amber-400 tracking-tight">R$ 0,00</h3>
+                            <p class="text-[10px] text-slate-400 mt-1">Resta para concluir</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-card p-5 rounded-2xl border border-dark-border shadow-xl glow-cyan relative overflow-hidden">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-cyan-400">Progresso Geral</span>
+                            <div class="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="goals-overall-pct" class="text-2xl font-black text-cyan-400 tracking-tight">0%</h3>
+                            <p class="text-[10px] text-slate-400 mt-1">% médio de conclusão</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PARECER DE RECOMENDAÇÃO GEMINI IA PARA METAS -->
+                <div id="ai-goals-plan-card" class="hidden bg-gradient-to-r from-slate-900 via-dark-card to-slate-950 p-6 rounded-2xl border border-indigo-500/30 shadow-xl space-y-3">
+                    <div class="flex items-center justify-between border-b border-dark-border pb-3">
+                        <h4 class="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb text-indigo-400"></i> Plano Recomendado de Alocação (Gemini AI)
+                        </h4>
+                        <button onclick="document.getElementById('ai-goals-plan-card').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-xs">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div id="ai-goals-plan-content" class="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-dark-border/60"></div>
+                </div>
+
+                <!-- GRID DE METAS INDIVIDUAIS -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b border-dark-border pb-3">
+                        <h3 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-bullseye text-indigo-400"></i> Suas Metas Ativas
+                        </h3>
+                        <span id="goals-count-badge" class="text-xs text-slate-400 font-semibold">0 metas</span>
+                    </div>
+
+                    <div id="goals-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+                </div>
+            </div>
+
+
+            <!-- ================= ABA 7: ASSISTENTE IA (CHAT GEMINI) ================= -->
+            <div id="tab-view-assistente" class="hidden space-y-6">
+                <!-- Page Header Interno -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-100 tracking-tight">Assistente IA Gemini</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Converse diretamente com o assistente alimentado pelos seus dados financeiros em tempo real.</p>
+                    </div>
+                    <button onclick="clearChatHistory()" class="px-3 py-2 border border-dark-border hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 text-xs font-semibold rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-eraser"></i> Limpar Chat
+                    </button>
+                </div>
+
+                <div class="bg-dark-card rounded-2xl border border-dark-border shadow-2xl flex flex-col h-[520px] overflow-hidden">
+                    <div class="p-4 border-b border-dark-border bg-slate-950/60 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-bold text-slate-100">FinanBot</h3>
+                                <p class="text-[10px] text-emerald-400 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Contexto sincronizado
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4 text-xs sm:text-sm">
+                        <div class="flex gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-robot text-xs"></i>
+                            </div>
+                            <div class="bg-slate-900 border border-dark-border p-3.5 rounded-2xl rounded-tl-none text-slate-200 max-w-[85%] leading-relaxed space-y-1">
+                                <p class="font-bold text-cyan-400 text-xs">FinanBot</p>
+                                <p>Olá! Sou seu assistente do FinanFlow. Conheço seus números do mês, despesas por categoria, dívidas e também suas <b>Metas e Reserva de Emergência</b>.</p>
+                                <p class="text-[11px] text-slate-400 pt-1">Como posso te ajudar no momento?</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chips Rápidos -->
+                    <div class="px-4 py-2 bg-slate-950/40 border-t border-dark-border flex gap-2 overflow-x-auto no-scrollbar">
+                        <button onclick="sendQuickPrompt('Como devo distribuir minha sobra mensal entre Reserva de Emergência e dívidas?')" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-dark-border rounded-xl text-[11px] text-slate-300 whitespace-nowrap transition">
+                            🛡️ Quanto aportar na Reserva de Emergência?
+                        </button>
+                        <button onclick="sendQuickPrompt('O que ganho hoje condiz com minhas dívidas e custos fixos?')" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-dark-border rounded-xl text-[11px] text-slate-300 whitespace-nowrap transition">
+                            ⚖️ Minha renda condiz com as dívidas?
+                        </button>
+                        <button onclick="sendQuickPrompt('Qual dívida devo focar em amortizar primeiro para economizar juros?')" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-dark-border rounded-xl text-[11px] text-slate-300 whitespace-nowrap transition">
+                            🎯 Como economizar juros?
+                        </button>
+                    </div>
+
+                    <form onsubmit="handleChatSubmit(event)" class="p-3 bg-slate-950 border-t border-dark-border flex gap-2">
+                        <input type="text" id="chat-user-input" placeholder="Pergunte ao Gemini sobre suas finanças e metas..." class="flex-1 px-4 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                        <button type="submit" id="btn-chat-send" class="px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+
+    <!-- ================= MODAIS DO SISTEMA ================= -->
+
+    <!-- MODAL: CONFIGURAÇÃO CHAVE GEMINI API -->
+    <div id="apikey-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-400"></i> Configurar Chave Gemini API
+                </h3>
+                <button onclick="closeApiKeyModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    A chave permite ativar os diagnósticos automatizados, planejamento de metas e chat via modelo <b class="text-cyan-400">gemini-2.5-flash</b>.
+                </p>
+                <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 space-y-1">
+                    <p class="font-bold flex items-center gap-1"><i class="fa-solid fa-lightbulb"></i> Obter chave gratuita:</p>
+                    <p>Acesse o <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" class="underline font-bold hover:text-white">Google AI Studio</a> e clique em "Get API Key".</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5">Chave API (Gemini)</label>
+                    <input type="password" id="input-gemini-key" placeholder="AIzaSy..." class="w-full px-4 py-3 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-amber-400">
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button onclick="removeApiKey()" class="px-4 py-2.5 rounded-xl border border-dark-border text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition">Remover</button>
+                    <button onclick="saveApiKey()" class="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-lg shadow-amber-400/20 transition">Salvar Chave</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL: CADASTRO/EDIÇÃO DE META -->
+    <div id="goal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-bullseye text-indigo-400"></i> Cadastrar / Editar Meta
+                </h3>
+                <button onclick="closeGoalModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="goal-form" onsubmit="handleGoalFormSubmit(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="goal-id">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nome da Meta</label>
+                    <input type="text" id="goal-title" placeholder="Ex: Reserva de Emergência, Viagem Disney, Entrada Carro..." required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Categoria</label>
+                        <select id="goal-category" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <option value="Reserva de Emergência">Reserva de Emergência</option>
+                            <option value="Viagem & Lazer">Viagem & Lazer</option>
+                            <option value="Veículo">Veículo</option>
+                            <option value="Casa Própria">Casa Própria</option>
+                            <option value="Eletrônicos">Eletrônicos</option>
+                            <option value="Aposentadoria / Investimentos">Aposentadoria / Investimentos</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Prioridade</label>
+                        <select id="goal-priority" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <option value="Alta">Alta</option>
+                            <option value="Média" selected>Média</option>
+                            <option value="Baixa">Baixa</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Valor Objetivo (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="goal-target-amount" placeholder="10000,00" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Valor Já Acumulado (R$)</label>
+                        <input type="number" step="0.01" min="0" id="goal-current-amount" placeholder="0,00" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Data Alvo de Conclusão</label>
+                    <input type="date" id="goal-target-date" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="closeGoalModal()" class="px-4 py-2.5 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-slate-950 text-xs font-bold shadow-lg shadow-indigo-500/20 transition">Salvar Meta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL: APORTAR OU RESGATAR DE META -->
+    <div id="goal-deposit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-piggy-bank text-indigo-400"></i> Aportar / Resgatar Valor
+                </h3>
+                <button onclick="closeGoalDepositModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="goal-deposit-form" onsubmit="handleGoalDepositSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="deposit-goal-id">
+
+                <div>
+                    <p class="text-xs text-slate-400">Meta: <b id="deposit-goal-name" class="text-slate-200">--</b></p>
+                    <p class="text-xs text-slate-400">Acumulado Atual: <b id="deposit-goal-current" class="text-emerald-400">R$ 0,00</b></p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Operação</label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-dark-input rounded-xl border border-dark-border text-xs font-bold">
+                        <button type="button" id="btn-op-aporte" onclick="setDepositOpType('aporte')" class="py-2.5 rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition">
+                            <i class="fa-solid fa-plus-circle mr-1"></i> Aportar
+                        </button>
+                        <button type="button" id="btn-op-resgate" onclick="setDepositOpType('resgate')" class="py-2.5 rounded-lg text-slate-400 transition">
+                            <i class="fa-solid fa-minus-circle mr-1"></i> Resgatar
+                        </button>
+                    </div>
+                    <input type="hidden" id="deposit-op-type" value="aporte">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Valor (R$)</label>
+                    <input type="number" step="0.01" min="0.01" id="deposit-amount" placeholder="100,00" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="deposit-sync-transaction" checked class="w-4 h-4 rounded bg-dark-input border-dark-border text-indigo-500 focus:ring-0 cursor-pointer">
+                    <label for="deposit-sync-transaction" class="text-xs text-slate-300 cursor-pointer">Lançar automaticamente no Saldo do Histórico</label>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="closeGoalDepositModal()" class="px-4 py-2.5 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-slate-950 text-xs font-bold shadow-lg shadow-indigo-500/20 transition">Confirmar Operação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL: DÍVIDAS -->
+    <div id="debt-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-scale-balanced text-rose-400"></i> Cadastrar / Editar Dívida
+                </h3>
+                <button onclick="closeDebtModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="debt-form" onsubmit="handleDebtFormSubmit(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="debt-id">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Credor / Nome da Dívida</label>
+                    <input type="text" id="debt-creditor" placeholder="Ex: Financiamento Carro, Nubank, Empréstimo..." required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Valor Original (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="debt-total-original" placeholder="0,00" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Saldo Devedor Atual (R$)</label>
+                        <input type="number" step="0.01" min="0" id="debt-remaining" placeholder="0,00" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Parcela Mensal (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="debt-installment" placeholder="0,00" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Taxa Juros (% a.m.)</label>
+                        <input type="number" step="0.01" min="0" id="debt-interest" placeholder="0.00" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Dia Vencimento</label>
+                        <input type="number" min="1" max="31" id="debt-dueday" placeholder="Ex: 10" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Categoria</label>
+                        <select id="debt-category" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                            <option value="Cartão de Crédito">Cartão de Crédito</option>
+                            <option value="Financiamento de Veículo">Financiamento de Veículo</option>
+                            <option value="Financiamento Imobiliário">Financiamento Imobiliário</option>
+                            <option value="Empréstimo Pessoal">Empréstimo Pessoal</option>
+                            <option value="Consórcio">Consórcio</option>
+                            <option value="Cheque Especial">Cheque Especial</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="closeDebtModal()" class="px-4 py-2.5 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-xs font-bold shadow-lg shadow-rose-500/20 transition">Salvar Dívida</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL: REGISTRAR PAGAMENTO DE PARCELA + UPLOAD COMPROVANTE -->
+    <div id="pay-installment-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-money-bill-wave text-emerald-400"></i> Registrar Pagamento
+                </h3>
+                <button onclick="closePayInstallmentModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="pay-installment-form" onsubmit="handlePayInstallmentSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="pay-debt-id">
+                
+                <div>
+                    <p class="text-xs text-slate-400">Dívida: <b id="pay-debt-name" class="text-slate-200">--</b></p>
+                    <p class="text-xs text-slate-400">Saldo Restante Atual: <b id="pay-debt-current-remaining" class="text-rose-400">R$ 0,00</b></p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Valor do Pagamento (R$)</label>
+                    <input type="number" step="0.01" min="0.01" id="pay-amount" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <!-- CAMPO ANEXO DE COMPROVANTE (PDF / IMAGEM) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1 flex items-center justify-between">
+                        <span>Anexar Comprovante (PDF ou Imagem)</span>
+                        <span class="text-[10px] text-slate-500 font-normal">Opcional</span>
+                    </label>
+                    <div class="relative">
+                        <input type="file" id="pay-receipt-file" accept="application/pdf,image/*" class="w-full px-3.5 py-2 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="pay-add-transaction" checked class="w-4 h-4 rounded bg-dark-input border-dark-border text-emerald-500 focus:ring-0 cursor-pointer">
+                    <label for="pay-add-transaction" class="text-xs text-slate-300 cursor-pointer">Lançar como despesa do mês</label>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="closePayInstallmentModal()" class="px-4 py-2.5 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition">Confirmar Pagamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL: HISTÓRICO DE PAGAMENTOS E COMPROVANTES DA DÍVIDA -->
+    <div id="debt-history-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-cyan-400"></i> Histórico de Pagamentos & Comprovantes
+                </h3>
+                <button onclick="closeDebtHistoryModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div class="flex justify-between items-center border-b border-dark-border pb-3">
+                    <span id="history-modal-creditor" class="font-extrabold text-sm text-slate-100">--</span>
+                    <span id="history-modal-count" class="text-xs text-slate-400">0 pagamentos</span>
+                </div>
+
+                <div id="debt-payments-history-list" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="button" onclick="closeDebtHistoryModal()" class="px-4 py-2 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL: EDIÇÃO DE TRANSAÇÃO -->
+    <div id="transaction-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-emerald-400"></i> Editar Transação
+                </h3>
+                <button onclick="closeTransactionModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="modal-transaction-form" onsubmit="handleModalTransactionSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="modal-trans-id">
+
+                <div class="grid grid-cols-2 gap-2 p-1 bg-dark-input rounded-xl text-xs font-bold border border-dark-border">
+                    <button type="button" id="modal-btn-type-despesa" onclick="setModalTransactionType('despesa')" class="py-2.5 rounded-lg text-rose-400 bg-rose-500/10 border border-rose-500/30 transition">
+                        <i class="fa-solid fa-circle-minus mr-1"></i> Despesa
+                    </button>
+                    <button type="button" id="modal-btn-type-receita" onclick="setModalTransactionType('receita')" class="py-2.5 rounded-lg text-slate-400 transition">
+                        <i class="fa-solid fa-circle-plus mr-1"></i> Receita
+                    </button>
+                </div>
+                <input type="hidden" id="modal-trans-type" value="despesa">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Descrição</label>
+                    <input type="text" id="modal-trans-desc" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Valor (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="modal-trans-amount" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Data</label>
+                        <input type="date" id="modal-trans-date" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Categoria</label>
+                        <select id="modal-trans-category" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Pagamento</label>
+                        <select id="modal-trans-payment" required class="w-full px-3.5 py-2.5 bg-dark-input border border-dark-border rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                            <option value="PIX">PIX</option>
+                            <option value="Cartão de Crédito">Cartão de Crédito</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Transferência">Transferência Bancária</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="closeTransactionModal()" class="px-4 py-2.5 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL: DEFINIR ORÇAMENTOS -->
+    <div id="budget-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-slate-950/50">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i> Configurar Limites por Categoria
+                </h3>
+                <button onclick="closeBudgetModal()" class="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-400">Insira um teto de gastos mensal por categoria. Deixe 0 para não definir limite.</p>
+                <div id="budget-inputs-container" class="space-y-3 max-h-80 overflow-y-auto pr-2"></div>
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="closeBudgetModal()" class="px-4 py-2.5 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Cancelar</button>
+                    <button type="button" onclick="saveBudgets()" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition">Salvar Limites</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL DE CONFIRMAÇÃO CUSTOMIZADO -->
+    <div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-dark-card rounded-3xl shadow-2xl border border-dark-border w-full max-w-sm p-6 text-center space-y-4">
+            <div class="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 id="confirm-title" class="text-sm font-bold text-slate-100 mb-1">Confirmar Ação</h3>
+                <p id="confirm-msg" class="text-xs text-slate-400">Tem certeza que deseja prosseguir com esta ação?</p>
+            </div>
+            <div class="flex justify-center gap-3 pt-2">
+                <button id="confirm-cancel-btn" class="px-4 py-2.5 rounded-xl border border-dark-border text-slate-400 text-xs font-semibold hover:bg-slate-800 transition">Cancelar</button>
+                <button id="confirm-ok-btn" class="px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-xs font-bold shadow-lg shadow-rose-500/20 transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT LÓGICA E GEMINI IA ================= -->
+    <script>
+        // METADADOS DAS ABAS PARA O TOP HEADER
+        const TAB_METADATA = {
+            dashboard: { name: 'Dashboard', icon: 'fa-chart-pie' },
+            lancamentos: { name: 'Lançamentos', icon: 'fa-plus-circle' },
+            historico: { name: 'Histórico', icon: 'fa-clock-rotate-left' },
+            limites: { name: 'Limite de Gastos', icon: 'fa-sliders' },
+            dividas: { name: 'Controle Financeiro', icon: 'fa-scale-balanced' },
+            metas: { name: 'Metas & Objetivos', icon: 'fa-bullseye' },
+            assistente: { name: 'Assistente IA', icon: 'fa-robot' }
+        };
+
+        // CATEGORIAS DO SISTEMA
+        const CATEGORIES = [
+            { name: 'Salário', icon: 'fa-briefcase', color: '#10b981', type: 'receita' },
+            { name: 'Investimentos', icon: 'fa-chart-line', color: '#06b6d4', type: 'receita' },
+            { name: 'Freelance', icon: 'fa-laptop-code', color: '#8b5cf6', type: 'receita' },
+            { name: 'Alimentação', icon: 'fa-utensils', color: '#f97316', type: 'despesa' },
+            { name: 'Moradia', icon: 'fa-house', color: '#3b82f6', type: 'despesa' },
+            { name: 'Transporte', icon: 'fa-car', color: '#6366f1', type: 'despesa' },
+            { name: 'Lazer', icon: 'fa-gamepad', color: '#a855f7', type: 'despesa' },
+            { name: 'Saúde', icon: 'fa-heart-pulse', color: '#f43f5e', type: 'despesa' },
+            { name: 'Educação', icon: 'fa-graduation-cap', color: '#eab308', type: 'despesa' },
+            { name: 'Dívidas & Empréstimos', icon: 'fa-scale-balanced', color: '#f43f5e', type: 'despesa' },
+            { name: 'Outros', icon: 'fa-box', color: '#64748b', type: 'ambos' }
+        ];
+
+        // CATEGORIAS DAS METAS
+        const GOAL_CATEGORIES_CONFIG = {
+            'Reserva de Emergência': { icon: 'fa-shield-halved', color: '#6366f1' },
+            'Viagem & Lazer': { icon: 'fa-plane', color: '#06b6d4' },
+            'Veículo': { icon: 'fa-car', color: '#f59e0b' },
+            'Casa Própria': { icon: 'fa-house-chimney', color: '#10b981' },
+            'Eletrônicos': { icon: 'fa-laptop', color: '#8b5cf6' },
+            'Aposentadoria / Investimentos': { icon: 'fa-piggy-bank', color: '#ec4899' },
+            'Outro': { icon: 'fa-bullseye', color: '#64748b' }
+        };
+
+        // ESTADO GLOBAL DA APLICAÇÃO
+        let transactions = [];
+        let budgets = {};
+        let debts = [];
+        let goals = [];
+        let geminiApiKey = '';
+        let isPrivacyMode = false;
+        let activeTab = 'dashboard';
+        let donutChartInstance = null;
+        let barChartInstance = null;
+
+        // INICIALIZAÇÃO DA APLICAÇÃO
+        window.onload = function() {
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = 'Inter';
+
+            const today = new Date();
+            document.getElementById('filter-month').value = today.toISOString().slice(0, 7);
+            document.getElementById('trans-date').value = today.toISOString().slice(0, 10);
+            document.getElementById('goal-target-date').value = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()).toISOString().slice(0, 10);
+
+            // Event Listeners de Filtros
+            document.getElementById('filter-month').addEventListener('change', renderApp);
+            document.getElementById('search-input').addEventListener('input', renderTransactions);
+            document.getElementById('filter-type').addEventListener('change', renderTransactions);
+            document.getElementById('filter-category').addEventListener('change', renderTransactions);
+            document.getElementById('sort-order').addEventListener('change', renderTransactions);
+
+            // Mobile Sidebar Toggles
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            document.getElementById('mobile-menu-toggle').addEventListener('click', () => {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            });
+            document.getElementById('close-sidebar-btn').addEventListener('click', closeMobileSidebar);
+            backdrop.addEventListener('click', closeMobileSidebar);
+
+            // Dropdown Menu Ferramentas
+            document.getElementById('btn-tools-menu').addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('tools-dropdown').classList.toggle('hidden');
+            });
+            document.addEventListener('click', () => {
+                document.getElementById('tools-dropdown').classList.add('hidden');
+            });
+
+            // Carregar Dados e Status
+            loadDataFromStorage();
+            populateCategorySelects();
+            checkApiKeyStatus();
+            updatePrivacyButtonUI();
+
+            if (transactions.length === 0 && debts.length === 0 && goals.length === 0) {
+                loadDemoData(false);
+            } else {
+                renderApp();
+            }
+        };
+
+        function closeMobileSidebar() {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.add('hidden');
+        }
+
+        // MODO PRIVACIDADE (OLHO MÁGICO)
+        function togglePrivacyMode() {
+            isPrivacyMode = !isPrivacyMode;
+            localStorage.setItem('finanflow_privacy', isPrivacyMode ? 'true' : 'false');
+            updatePrivacyButtonUI();
+            renderApp();
+            showToast(isPrivacyMode ? 'Modo Privacidade ativado.' : 'Modo Privacidade desativado.', 'info');
+        }
+
+        function updatePrivacyButtonUI() {
+            const icon = document.getElementById('privacy-icon');
+            if (isPrivacyMode) {
+                icon.className = 'fa-solid fa-eye-slash text-rose-400 text-sm';
+            } else {
+                icon.className = 'fa-solid fa-eye text-emerald-400 text-sm';
+            }
+        }
+
+        // ALTERAÇÃO DE ABA COM ATUALIZAÇÃO DO BADGE NO TOP HEADER
+        function switchTab(tabName) {
+            activeTab = tabName;
+
+            ['dashboard', 'lancamentos', 'historico', 'limites', 'dividas', 'metas', 'assistente'].forEach(tab => {
+                const view = document.getElementById(`tab-view-${tab}`);
+                if (view) view.classList.add('hidden');
+                
+                const btn = document.getElementById(`nav-btn-${tab}`);
+                if (btn) {
+                    btn.className = 'nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition';
+                }
+            });
+
+            const activeView = document.getElementById(`tab-view-${tabName}`);
+            if (activeView) activeView.classList.remove('hidden');
+            
+            const activeBtn = document.getElementById(`nav-btn-${tabName}`);
+            if (activeBtn) {
+                activeBtn.className = 'nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20';
+            }
+
+            // Atualiza o Badge no Top Header
+            const meta = TAB_METADATA[tabName] || { name: 'FinanFlow', icon: 'fa-chart-line' };
+            document.getElementById('top-tab-icon').className = `fa-solid ${meta.icon} text-emerald-400`;
+            document.getElementById('top-tab-name').textContent = meta.name;
+
+            closeMobileSidebar();
+
+            if (tabName === 'dashboard') {
+                renderCharts();
+            }
+        }
+
+        // PERSISTÊNCIA NO LOCALSTORAGE
+        function loadDataFromStorage() {
+            const savedTrans = localStorage.getItem('finanflow_ai_transactions');
+            const savedBudgets = localStorage.getItem('finanflow_ai_budgets');
+            const savedDebts = localStorage.getItem('finanflow_ai_debts');
+            const savedGoals = localStorage.getItem('finanflow_ai_goals');
+            const savedKey = localStorage.getItem('finanflow_gemini_key');
+            const savedPrivacy = localStorage.getItem('finanflow_privacy');
+
+            if (savedTrans) transactions = JSON.parse(savedTrans);
+            if (savedBudgets) budgets = JSON.parse(savedBudgets);
+            if (savedDebts) debts = JSON.parse(savedDebts);
+            if (savedGoals) goals = JSON.parse(savedGoals);
+            if (savedKey) geminiApiKey = savedKey;
+            if (savedPrivacy) isPrivacyMode = (savedPrivacy === 'true');
+        }
+
+        function saveDataToStorage() {
+            localStorage.setItem('finanflow_ai_transactions', JSON.stringify(transactions));
+            localStorage.setItem('finanflow_ai_budgets', JSON.stringify(budgets));
+            localStorage.setItem('finanflow_ai_debts', JSON.stringify(debts));
+            localStorage.setItem('finanflow_ai_goals', JSON.stringify(goals));
+        }
+
+        // GERENCIAMENTO CHAVE API GEMINI
+        function openApiKeyModal() {
+            document.getElementById('input-gemini-key').value = geminiApiKey;
+            document.getElementById('apikey-modal').classList.remove('hidden');
+        }
+
+        function closeApiKeyModal() {
+            document.getElementById('apikey-modal').classList.add('hidden');
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('input-gemini-key').value.trim();
+            geminiApiKey = key;
+            localStorage.setItem('finanflow_gemini_key', key);
+            checkApiKeyStatus();
+            closeApiKeyModal();
+            showToast(key ? 'Chave Gemini API configurada com sucesso!' : 'Chave API removida.');
+        }
+
+        function removeApiKey() {
+            geminiApiKey = '';
+            localStorage.removeItem('finanflow_gemini_key');
+            document.getElementById('input-gemini-key').value = '';
+            checkApiKeyStatus();
+            closeApiKeyModal();
+            showToast('Chave API removida.', 'info');
+        }
+
+        function checkApiKeyStatus() {
+            const statusDot = document.getElementById('api-status-dot');
+            if (geminiApiKey && geminiApiKey.length > 5) {
+                statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse';
+            } else {
+                statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            }
+        }
+
+        // INTEGRAÇÃO COM A API DO GOOGLE GEMINI (gemini-2.5-flash)
+        async function callGeminiAPI(userQuery, systemPrompt = "", responseSchema = null) {
+            const apiKeyToUse = geminiApiKey || "";
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKeyToUse}`;
+
+            const payload = {
+                contents: [{ role: 'user', parts: [{ text: userQuery }] }]
+            };
+
+            if (systemPrompt) {
+                payload.systemInstruction = { parts: [{ text: systemPrompt }] };
+            }
+
+            if (responseSchema) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: responseSchema
+                };
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!textResult) {
+                    throw new Error("A API retornou uma resposta vazia.");
+                }
+
+                return textResult;
+
+            } catch (error) {
+                console.warn("Erro Gemini API:", error);
+                throw error;
+            }
+        }
+
+        function getFinancialContextJSON() {
+            const selectedMonth = document.getElementById('filter-month').value;
+            const monthlyTrans = transactions.filter(t => t.date.startsWith(selectedMonth));
+
+            const totalBalance = transactions.reduce((acc, t) => t.type === 'receita' ? acc + t.amount : acc - t.amount, 0);
+            const income = monthlyTrans.filter(t => t.type === 'receita').reduce((a, b) => a + b.amount, 0);
+            const expenses = monthlyTrans.filter(t => t.type === 'despesa').reduce((a, b) => a + b.amount, 0);
+
+            const totalDebtInstallments = debts.reduce((sum, d) => sum + (d.monthlyInstallment || 0), 0);
+            const totalRemainingDebt = debts.reduce((sum, d) => sum + (d.remainingBalance || 0), 0);
+            const dti = income > 0 ? ((totalDebtInstallments / income) * 100).toFixed(1) : (totalDebtInstallments > 0 ? 100 : 0);
+
+            const goalsSummary = goals.map(g => ({
+                nome: g.title,
+                categoria: g.category,
+                prioridade: g.priority,
+                valorObjetivo: g.targetAmount,
+                valorAtual: g.currentAmount,
+                faltante: Math.max(0, g.targetAmount - g.currentAmount),
+                dataAlvo: g.targetDate
+            }));
+
+            return {
+                mesReferencia: selectedMonth,
+                saldoTotalAcumulado: totalBalance,
+                receitasMes: income,
+                despesasMes: expenses,
+                sobraMensalEstimada: Math.max(0, income - expenses - totalDebtInstallments),
+                taxaEconomiaPercentual: income > 0 ? Math.max(0, Math.round(((income - expenses) / income) * 100)) : 0,
+                comprometimentoRendaDTI: `${dti}%`,
+                parcelasDividasMes: totalDebtInstallments,
+                passivoDevedorTotal: totalRemainingDebt,
+                metasAtivas: goalsSummary,
+                dividasAtivas: debts.map(d => ({ credor: d.creditor, saldoRestante: d.remainingBalance, parcela: d.monthlyInstallment, jurosMensal: `${d.interestRate}%` })),
+                limitesDefinidos: budgets
+            };
+        }
+
+        // DIAGNÓSTICO RÁPIDO NO DASHBOARD
+        async function generateAIDiagnosis() {
+            const btn = document.getElementById('btn-generate-ai-diagnosis');
+            const content = document.getElementById('ai-diagnosis-content');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Analisando...`;
+            content.innerHTML = `<span class="text-cyan-400 font-bold animate-pulse"><i class="fa-solid fa-brain mr-2"></i> O Gemini está compilando seu parecer...</span>`;
+
+            const context = getFinancialContextJSON();
+            const prompt = `Faça uma análise síntese das finanças do mês: Receitas R$ ${context.receitasMes}, Despesas R$ ${context.despesasMes}, DTI ${context.comprometimentoRendaDTI}, Sobra Mensal R$ ${context.sobraMensalEstimada}. Há ${context.metasAtivas.length} metas ativas. Forneça 3 conselhos práticos em HTML leve (use <b> para destaques).`;
+
+            const systemPrompt = "Você é um consultor financeiro pessoal experiente. Responda em tom encorajador e direto em português.";
+
+            try {
+                let text = "";
+                if (geminiApiKey) {
+                    text = await callGeminiAPI(prompt, systemPrompt);
+                } else {
+                    await new Promise(r => setTimeout(r, 800));
+                    text = `<b>Sua Análise Financeira do Mês:</b><br>
+                    • Receitas de R$ ${context.receitasMes.toFixed(2)} vs Despesas de R$ ${context.despesasMes.toFixed(2)}.<br>
+                    • Comprometimento com parcelas (DTI) em <b>${context.comprometimentoRendaDTI}</b>.<br>
+                    • Você possui <b>${context.metasAtivas.length} metas ativas</b> em andamento.<br>
+                    • <i>Configure sua chave Gemini API no topo para análises dinâmicas em tempo real!</i>`;
+                }
+
+                content.innerHTML = text;
+            } catch (err) {
+                content.innerHTML = `<span class="text-rose-400">Falha na análise: ${err.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Análise`;
+            }
+        }
+
+        // DIAGNÓSTICO DE DÍVIDAS
+        async function generateDebtAIDiagnosis() {
+            const btn = document.getElementById('btn-generate-debt-ai');
+            const content = document.getElementById('ai-debt-diagnosis-content');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Analisando Dívidas...`;
+            content.innerHTML = `<span class="text-rose-400 font-bold animate-pulse"><i class="fa-solid fa-shield-halved mr-2"></i> O Gemini está cruzando seus passivos com sua renda...</span>`;
+
+            const context = getFinancialContextJSON();
+            const prompt = `Analise a compatibilidade da renda com as dívidas. Renda R$ ${context.receitasMes}, DTI ${context.comprometimentoRendaDTI}, Passivo Total R$ ${context.passivoDevedorTotal}. Dívidas: ${JSON.stringify(context.dividasAtivas)}. Forneça um parecer claro sobre se o ganho condiz com as dívidas e qual renegociar primeiro.`;
+
+            const systemPrompt = "Você é um especialista em reestruturação de dívidas pessoais. Responda de forma clara com formatação HTML leve.";
+
+            try {
+                let text = "";
+                if (geminiApiKey) {
+                    text = await callGeminiAPI(prompt, systemPrompt);
+                } else {
+                    await new Promise(r => setTimeout(r, 900));
+                    text = `<b>Parecer da Capacidade de Pagamento:</b><br>
+                    • Seu comprometimento de renda (DTI) está em <b>${context.comprometimentoRendaDTI}</b>.<br>
+                    • O passivo devedor acumulado é de <b>R$ ${context.passivoDevedorTotal.toFixed(2)}</b>.<br>
+                    • Recomenda-se focar primeiro na dívida com maior taxa de juros a.m. para conter os juros.<br>
+                    • <i>Configure sua Chave Gemini API no topo para pareceres inteligentes personalizados!</i>`;
+                }
+
+                content.innerHTML = text;
+            } catch (err) {
+                content.innerHTML = `<span class="text-rose-400">Erro na análise: ${err.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Analisar Dívidas & Renda`;
+            }
+        }
+
+        // PLANO DE METAS COM GEMINI IA
+        async function planGoalsWithAI() {
+            const btn = document.getElementById('btn-plan-goals-ai');
+            const card = document.getElementById('ai-goals-plan-card');
+            const content = document.getElementById('ai-goals-plan-content');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Planejando...`;
+            card.classList.remove('hidden');
+            content.innerHTML = `<span class="text-indigo-400 font-bold animate-pulse"><i class="fa-solid fa-brain mr-2"></i> O Gemini está analisando sua sobra financeira e suas metas...</span>`;
+
+            const context = getFinancialContextJSON();
+            const prompt = `Analise minhas metas ativas e minha capacidade financeira:
+            Receita Mensal: R$ ${context.receitasMes}
+            Despesas Mensais: R$ ${context.despesasMes}
+            Sobra Estimada Mensal: R$ ${context.sobraMensalEstimada}
+            Metas: ${JSON.stringify(context.metasAtivas)}
+
+            Crie um plano inteligente de distribuição dos aportes mensais. Priorize a Reserva de Emergência se não estiver concluída. Use HTML leve (<b> para destaques).`;
+
+            const systemPrompt = "Você é um planejador financeiro especializado em alocação de objetivos. Seja prático, direto e encorajador.";
+
+            try {
+                let text = "";
+                if (geminiApiKey) {
+                    text = await callGeminiAPI(prompt, systemPrompt);
+                } else {
+                    await new Promise(r => setTimeout(r, 900));
+                    text = `<b>Plano Recomendado de Alocação de Aportes:</b><br>
+                    1. <b>Prioridade Absoluta: Reserva de Emergência.</b> Aloque 70% da sua sobra mensal até atingir ao menos 3 a 6 meses de despesas fixas.<br>
+                    2. <b>Metas Secundárias:</b> Distribua os 30% restantes proporcionalmente entre viagens e bens de consumo.<br>
+                    • <i>Cadastre sua chave Gemini API no topo para simulações exatas!</i>`;
+                }
+
+                content.innerHTML = text;
+            } catch (err) {
+                content.innerHTML = `<span class="text-rose-400">Erro no planejamento: ${err.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Planejar Metas com IA`;
+            }
+        }
+
+        // LANÇAMENTO INTELIGENTE POR LINGUAGEM NATURAL
+        async function processAISmartLancamento() {
+            const input = document.getElementById('ai-smart-input');
+            const btn = document.getElementById('btn-ai-smart-submit');
+            const text = input.value.trim();
+
+            if (!text) return showToast('Digite uma frase para interpretar.', 'error');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Interpretando...`;
+
+            const today = new Date().toISOString().slice(0, 10);
+            const categoriesList = CATEGORIES.map(c => c.name).join(', ');
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    type: { type: "STRING", enum: ["receita", "despesa"] },
+                    amount: { type: "NUMBER" },
+                    category: { type: "STRING" },
+                    description: { type: "STRING" },
+                    date: { type: "STRING" },
+                    paymentMethod: { type: "STRING" }
+                },
+                required: ["type", "amount", "category", "description", "date"]
+            };
+
+            const systemPrompt = `Extrator de transações. Categorias válidas: [${categoriesList}]. Data padrão se omitida: ${today}. Formas de pagamento: [PIX, Cartão de Crédito, Dinheiro, Transferência].`;
+
+            try {
+                let extracted = null;
+
+                if (geminiApiKey) {
+                    const jsonString = await callGeminiAPI(text, systemPrompt, schema);
+                    extracted = JSON.parse(jsonString);
+                } else {
+                    await new Promise(r => setTimeout(r, 700));
+                    const isReceita = text.toLowerCase().includes('recebi') || text.toLowerCase().includes('salário');
+                    const numMatch = text.match(/\d+(?:[\.,]\d+)?/);
+                    const amount = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : 100;
+
+                    extracted = {
+                        type: isReceita ? 'receita' : 'despesa',
+                        amount: amount,
+                        category: isReceita ? 'Salário' : 'Outros',
+                        description: text,
+                        date: today,
+                        paymentMethod: 'PIX'
+                    };
+                }
+
+                if (extracted && extracted.amount > 0) {
+                    const newTrans = {
+                        id: 'tr_ai_' + Date.now(),
+                        description: extracted.description || text,
+                        amount: Math.abs(extracted.amount),
+                        date: extracted.date || today,
+                        category: CATEGORIES.some(c => c.name === extracted.category) ? extracted.category : 'Outros',
+                        paymentMethod: extracted.paymentMethod || 'PIX',
+                        type: extracted.type || 'despesa'
+                    };
+
+                    transactions.push(newTrans);
+                    saveDataToStorage();
+                    renderApp();
+                    input.value = '';
+                    showToast(`Cadastrado: ${newTrans.description} (${formatCurrency(newTrans.amount)})`);
+                } else {
+                    showToast('Não foi possível reconhecer o valor.', 'error');
+                }
+
+            } catch (err) {
+                showToast(`Erro na IA: ${err.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Processar com IA`;
+            }
+        }
+
+        // CHAT ASSISTENTE INTERATIVO
+        async function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-user-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            appendChatMessage('user', msg);
+            input.value = '';
+
+            await askGeminiBot(msg);
+        }
+
+        function sendQuickPrompt(promptText) {
+            appendChatMessage('user', promptText);
+            askGeminiBot(promptText);
+        }
+
+        async function askGeminiBot(userMsg) {
+            const chatBox = document.getElementById('chat-messages');
+            const loadingId = 'loading-' + Date.now();
+
+            const loadingHtml = `
+                <div id="${loadingId}" class="flex gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-robot text-xs"></i>
+                    </div>
+                    <div class="bg-slate-900 border border-dark-border p-3.5 rounded-2xl text-slate-400 text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-spinner animate-spin text-cyan-400"></i> Analisando seu histórico e formulando resposta...
+                    </div>
+                </div>
+            `;
+            chatBox.insertAdjacentHTML('beforeend', loadingHtml);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const context = getFinancialContextJSON();
+            const systemPrompt = `Você é o FinanBot, assistente do FinanFlow. Contexto financeiro completo do usuário: ${JSON.stringify(context)}. Responda em português objetivo, amigável e com orientações práticas.`;
+
+            try {
+                let botResponse = "";
+                if (geminiApiKey) {
+                    botResponse = await callGeminiAPI(userMsg, systemPrompt);
+                } else {
+                    await new Promise(r => setTimeout(r, 800));
+                    botResponse = `Com base no seu histórico atual: suas receitas são **${formatCurrency(context.receitasMes)}**, despesas **${formatCurrency(context.despesasMes)}** e parcelas de dívida **${formatCurrency(context.parcelasDividasMes)}**.\n\nSua sobra estimada para aportes em metas é de **${formatCurrency(context.sobraMensalEstimada)}**.\n\nConfigure sua Chave Gemini API no topo para conselhos completos!`;
+                }
+
+                document.getElementById(loadingId)?.remove();
+                appendChatMessage('ai', botResponse);
+
+            } catch (err) {
+                document.getElementById(loadingId)?.remove();
+                appendChatMessage('ai', `⚠️ Falha ao conectar com Gemini: ${err.message}`);
+            }
+        }
+
+        function appendChatMessage(sender, text) {
+            const chatBox = document.getElementById('chat-messages');
+            const isUser = sender === 'user';
+
+            const formattedText = text
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/\n/g, '<br>');
+
+            const msgHtml = `
+                <div class="flex gap-3 ${isUser ? 'justify-end' : ''}">
+                    ${!isUser ? `
+                        <div class="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-robot text-xs"></i>
+                        </div>
+                    ` : ''}
+                    <div class="${isUser ? 'bg-emerald-500 text-slate-950 font-medium rounded-br-none' : 'bg-slate-900 border border-dark-border text-slate-200 rounded-tl-none'} p-3.5 rounded-2xl max-w-[85%] leading-relaxed">
+                        ${!isUser ? '<p class="font-bold text-cyan-400 text-xs mb-1">FinanBot</p>' : ''}
+                        <p>${formattedText}</p>
+                    </div>
+                </div>
+            `;
+
+            chatBox.insertAdjacentHTML('beforeend', msgHtml);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function clearChatHistory() {
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = `
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-robot text-xs"></i>
+                    </div>
+                    <div class="bg-slate-900 border border-dark-border p-3.5 rounded-2xl rounded-tl-none text-slate-200 max-w-[85%] leading-relaxed space-y-1">
+                        <p class="font-bold text-cyan-400 text-xs">FinanBot</p>
+                        <p>Chat reiniciado. Como posso te orientar?</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // RENDERIZAÇÃO GERAL
+        function renderApp() {
+            renderSummary();
+            renderCharts();
+            renderRecentLancamentos();
+            renderTransactions();
+            renderBudgets();
+            renderDebtsAndHealth();
+            renderGoalsView();
+        }
+
+        function populateCategorySelects() {
+            const filterCat = document.getElementById('filter-category');
+            const transCat = document.getElementById('trans-category');
+            const modalCat = document.getElementById('modal-trans-category');
+
+            filterCat.innerHTML = '<option value="ALL">Todas as Categorias</option>';
+            transCat.innerHTML = '';
+            modalCat.innerHTML = '';
+
+            CATEGORIES.forEach(cat => {
+                filterCat.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+                transCat.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+                modalCat.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+            });
+        }
+
+        // RENDER RESUMO DASHBOARD
+        function renderSummary() {
+            const selectedMonth = document.getElementById('filter-month').value;
+
+            const totalBalance = transactions.reduce((acc, t) => t.type === 'receita' ? acc + t.amount : acc - t.amount, 0);
+            const monthlyTrans = transactions.filter(t => t.date.startsWith(selectedMonth));
+
+            const monthlyIncome = monthlyTrans.filter(t => t.type === 'receita').reduce((acc, t) => acc + t.amount, 0);
+            const monthlyExpenses = monthlyTrans.filter(t => t.type === 'despesa').reduce((acc, t) => acc + t.amount, 0);
+
+            const totalDebtInstallments = debts.reduce((sum, d) => sum + (d.monthlyInstallment || 0), 0);
+            const dti = monthlyIncome > 0 ? ((totalDebtInstallments / monthlyIncome) * 100).toFixed(0) : (totalDebtInstallments > 0 ? 100 : 0);
+
+            let savingsRate = 0;
+            if (monthlyIncome > 0) {
+                savingsRate = Math.max(0, Math.round(((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100));
+            }
+
+            document.getElementById('card-total-balance').textContent = formatCurrency(totalBalance);
+            document.getElementById('card-monthly-income').textContent = formatCurrency(monthlyIncome);
+            document.getElementById('card-monthly-expenses').textContent = formatCurrency(monthlyExpenses);
+            document.getElementById('card-savings-rate').textContent = `${savingsRate}%`;
+            document.getElementById('card-monthly-debt-installments').textContent = formatCurrency(totalDebtInstallments);
+            document.getElementById('card-dti-summary').innerHTML = `<i class="fa-solid fa-scale-balanced text-amber-400"></i> DTI: ${dti}% da renda`;
+
+            // Atualiza Widget da Reserva de Emergência no Dashboard
+            const emergencyGoal = goals.find(g => g.category === 'Reserva de Emergência') || goals[0];
+            if (emergencyGoal) {
+                const pct = emergencyGoal.targetAmount > 0 ? Math.min(100, Math.round((emergencyGoal.currentAmount / emergencyGoal.targetAmount) * 100)) : 0;
+                document.getElementById('dash-emergency-title').textContent = emergencyGoal.title;
+                document.getElementById('dash-emergency-values').textContent = `${formatCurrency(emergencyGoal.currentAmount)} acumulados de ${formatCurrency(emergencyGoal.targetAmount)} objetivo`;
+                document.getElementById('dash-emergency-pct').textContent = `${pct}%`;
+                document.getElementById('dash-emergency-bar').style.width = `${pct}%`;
+            } else {
+                document.getElementById('dash-emergency-title').textContent = 'Nenhuma meta de reserva criada';
+                document.getElementById('dash-emergency-values').textContent = 'Crie uma meta para acompanhar seu colchão de segurança.';
+                document.getElementById('dash-emergency-pct').textContent = '0%';
+                document.getElementById('dash-emergency-bar').style.width = '0%';
+            }
+        }
+
+        // RENDER GRÁFICOS CHART.JS
+        function renderCharts() {
+            const selectedMonth = document.getElementById('filter-month').value;
+
+            const monthlyExpenses = transactions.filter(t => t.date.startsWith(selectedMonth) && t.type === 'despesa');
+            const categoryTotals = {};
+            monthlyExpenses.forEach(t => { categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount; });
+
+            const labels = Object.keys(categoryTotals);
+            const dataValues = Object.values(categoryTotals);
+            const bgColors = labels.map(l => (CATEGORIES.find(c => c.name === l) || { color: '#64748b' }).color);
+
+            const donutCtx = document.getElementById('expensesDonutChart').getContext('2d');
+            if (donutChartInstance) donutChartInstance.destroy();
+
+            donutChartInstance = new Chart(donutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels.length ? labels : ['Sem Despesas'],
+                    datasets: [{
+                        data: dataValues.length ? dataValues : [1],
+                        backgroundColor: dataValues.length ? bgColors : ['#1e293b'],
+                        borderWidth: 2,
+                        borderColor: '#0f172a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: '#94a3b8' } },
+                        tooltip: { callbacks: { label: (ctx) => dataValues.length ? ` ${ctx.label}: ${formatCurrency(ctx.raw)}` : ' Sem despesas' } }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            const lastMonths = getLast6MonthsList();
+            const incomeSeries = [];
+            const expenseSeries = [];
+
+            lastMonths.forEach(mKey => {
+                const monthTrans = transactions.filter(t => t.date.startsWith(mKey));
+                incomeSeries.push(monthTrans.filter(t => t.type === 'receita').reduce((a, b) => a + b.amount, 0));
+                expenseSeries.push(monthTrans.filter(t => t.type === 'despesa').reduce((a, b) => a + b.amount, 0));
+            });
+
+            const barCtx = document.getElementById('monthlyBarChart').getContext('2d');
+            if (barChartInstance) barChartInstance.destroy();
+
+            barChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: lastMonths.map(m => formatMonthLabel(m)),
+                    datasets: [
+                        { label: 'Receitas', data: incomeSeries, backgroundColor: '#10b981', borderRadius: 6 },
+                        { label: 'Despesas', data: expenseSeries, backgroundColor: '#f43f5e', borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: '#94a3b8' } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', callback: (val) => isPrivacyMode ? '••••' : ('R$ ' + val) } }
+                    }
+                }
+            });
+        }
+
+        // ABA 2: FORMULÁRIO DE LANÇAMENTO
+        function setTransactionType(type) {
+            document.getElementById('trans-type').value = type;
+            const btnDesp = document.getElementById('btn-type-despesa');
+            const btnRec = document.getElementById('btn-type-receita');
+
+            if (type === 'despesa') {
+                btnDesp.className = 'py-3 rounded-lg text-rose-400 bg-rose-500/10 border border-rose-500/30 shadow-md transition flex items-center justify-center gap-2 font-bold';
+                btnRec.className = 'py-3 rounded-lg text-slate-400 transition flex items-center justify-center gap-2 hover:text-slate-200';
+            } else {
+                btnRec.className = 'py-3 rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 shadow-md transition flex items-center justify-center gap-2 font-bold';
+                btnDesp.className = 'py-3 rounded-lg text-slate-400 transition flex items-center justify-center gap-2 hover:text-slate-200';
+            }
+        }
+
+        function resetLancamentoForm() {
+            document.getElementById('lancamento-form').reset();
+            document.getElementById('trans-id').value = '';
+            document.getElementById('trans-date').value = new Date().toISOString().slice(0, 10);
+            setTransactionType('despesa');
+        }
+
+        function handleTransactionSubmit(e) {
+            e.preventDefault();
+            const description = document.getElementById('trans-desc').value.trim();
+            const amount = parseFloat(document.getElementById('trans-amount').value);
+            const date = document.getElementById('trans-date').value;
+            const category = document.getElementById('trans-category').value;
+            const paymentMethod = document.getElementById('trans-payment').value;
+            const type = document.getElementById('trans-type').value;
+
+            if (!description || isNaN(amount) || amount <= 0 || !date) {
+                showToast('Preencha os campos com valores válidos.', 'error');
+                return;
+            }
+
+            transactions.push({
+                id: 'tr_' + Date.now(),
+                description, amount, date, category, paymentMethod, type
+            });
+
+            saveDataToStorage();
+            resetLancamentoForm();
+            renderApp();
+            showToast('Lançamento salvo com sucesso!');
+        }
+
+        function renderRecentLancamentos() {
+            const container = document.getElementById('recent-lancamentos-list');
+            const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            if (sorted.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 py-4 text-center">Nenhum lançamento recente.</p>';
+                return;
+            }
+
+            container.innerHTML = sorted.map(t => {
+                const catObj = CATEGORIES.find(c => c.name === t.category) || { icon: 'fa-box', color: '#64748b' };
+                const isReceita = t.type === 'receita';
+
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950/50 border border-dark-border">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-950 text-xs font-bold shrink-0" style="background-color: ${catObj.color}">
+                                <i class="fa-solid ${catObj.icon}"></i>
+                            </div>
+                            <div class="truncate max-w-[130px]">
+                                <p class="font-bold text-slate-200 text-xs truncate">${escapeHTML(t.description)}</p>
+                                <p class="text-[10px] text-slate-500 font-medium">${t.category}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold ${isReceita ? 'text-emerald-400' : 'text-slate-200'}">
+                                ${isReceita ? '+' : '-'} ${formatCurrency(t.amount)}
+                            </span>
+                            <button onclick="confirmDeleteTransaction('${t.id}')" class="p-1 text-slate-600 hover:text-rose-400 text-xs transition">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ABA 3: HISTÓRICO DE TRANSAÇÕES
+        function renderTransactions() {
+            const tbody = document.getElementById('transaction-list-body');
+            const emptyState = document.getElementById('empty-state');
+
+            const selectedMonth = document.getElementById('filter-month').value;
+            const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+            const typeVal = document.getElementById('filter-type').value;
+            const categoryVal = document.getElementById('filter-category').value;
+            const sortVal = document.getElementById('sort-order').value;
+
+            let filtered = transactions.filter(t => {
+                const matchMonth = t.date.startsWith(selectedMonth);
+                const matchSearch = t.description.toLowerCase().includes(searchVal);
+                const matchType = typeVal === 'ALL' || t.type === typeVal;
+                const matchCategory = categoryVal === 'ALL' || t.category === categoryVal;
+                return matchMonth && matchSearch && matchType && matchCategory;
+            });
+
+            filtered.sort((a, b) => {
+                if (sortVal === 'date-desc') return new Date(b.date) - new Date(a.date);
+                if (sortVal === 'date-asc') return new Date(a.date) - new Date(b.date);
+                if (sortVal === 'amount-desc') return b.amount - a.amount;
+                if (sortVal === 'amount-asc') return a.amount - b.amount;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            tbody.innerHTML = filtered.map(t => {
+                const catObj = CATEGORIES.find(c => c.name === t.category) || { icon: 'fa-box', color: '#64748b' };
+                const isReceita = t.type === 'receita';
+
+                return `
+                    <tr class="hover:bg-slate-900/50 transition">
+                        <td class="py-3 px-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-slate-950 text-xs font-bold shrink-0" style="background-color: ${catObj.color}">
+                                    <i class="fa-solid ${catObj.icon}"></i>
+                                </div>
+                                <div class="truncate max-w-[150px] sm:max-w-xs">
+                                    <p class="font-bold text-slate-100 text-xs sm:text-sm truncate">${escapeHTML(t.description)}</p>
+                                    <p class="text-[10px] text-slate-500 font-medium">${t.category}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-3 text-slate-400 font-medium whitespace-nowrap">
+                            <span class="inline-block px-2 py-0.5 rounded-md bg-slate-950 border border-dark-border text-[10px] text-slate-300">${t.paymentMethod || 'PIX'}</span>
+                        </td>
+                        <td class="py-3 px-3 text-slate-400 font-medium whitespace-nowrap">${formatDateBR(t.date)}</td>
+                        <td class="py-3 px-3 text-right font-black whitespace-nowrap ${isReceita ? 'text-emerald-400' : 'text-slate-200'}">
+                            ${isReceita ? '+' : '-'} ${formatCurrency(t.amount)}
+                        </td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">
+                            <div class="flex items-center justify-center gap-1">
+                                <button onclick="openTransactionModal('${t.id}')" class="p-1.5 text-slate-500 hover:text-emerald-400 rounded-lg transition" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="confirmDeleteTransaction('${t.id}')" class="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg transition" title="Excluir">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openTransactionModal(id) {
+            const t = transactions.find(item => item.id === id);
+            if (!t) return;
+
+            document.getElementById('modal-trans-id').value = t.id;
+            document.getElementById('modal-trans-desc').value = t.description;
+            document.getElementById('modal-trans-amount').value = t.amount;
+            document.getElementById('modal-trans-date').value = t.date;
+            document.getElementById('modal-trans-category').value = t.category;
+            document.getElementById('modal-trans-payment').value = t.paymentMethod || 'PIX';
+            setModalTransactionType(t.type);
+
+            document.getElementById('transaction-modal').classList.remove('hidden');
+        }
+
+        function closeTransactionModal() {
+            document.getElementById('transaction-modal').classList.add('hidden');
+        }
+
+        function setModalTransactionType(type) {
+            document.getElementById('modal-trans-type').value = type;
+            const btnDesp = document.getElementById('modal-btn-type-despesa');
+            const btnRec = document.getElementById('modal-btn-type-receita');
+
+            if (type === 'despesa') {
+                btnDesp.className = 'py-2.5 rounded-lg text-rose-400 bg-rose-500/10 border border-rose-500/30 transition';
+                btnRec.className = 'py-2.5 rounded-lg text-slate-400 transition';
+            } else {
+                btnRec.className = 'py-2.5 rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition';
+                btnDesp.className = 'py-2.5 rounded-lg text-slate-400 transition';
+            }
+        }
+
+        function handleModalTransactionSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('modal-trans-id').value;
+            const idx = transactions.findIndex(t => t.id === id);
+
+            if (idx !== -1) {
+                transactions[idx] = {
+                    id,
+                    description: document.getElementById('modal-trans-desc').value.trim(),
+                    amount: parseFloat(document.getElementById('modal-trans-amount').value),
+                    date: document.getElementById('modal-trans-date').value,
+                    category: document.getElementById('modal-trans-category').value,
+                    paymentMethod: document.getElementById('modal-trans-payment').value,
+                    type: document.getElementById('modal-trans-type').value
+                };
+
+                saveDataToStorage();
+                closeTransactionModal();
+                renderApp();
+                showToast('Lançamento atualizado!');
+            }
+        }
+
+        function confirmDeleteTransaction(id) {
+            showConfirmModal(
+                'Excluir Lançamento',
+                'Tem certeza de que deseja excluir este registro?',
+                () => {
+                    transactions = transactions.filter(t => t.id !== id);
+                    saveDataToStorage();
+                    renderApp();
+                    showToast('Lançamento excluído.', 'info');
+                }
+            );
+        }
+
+        // ABA 4: LIMITE DE GASTOS
+        function renderBudgets() {
+            const container = document.getElementById('budget-list');
+            const selectedMonth = document.getElementById('filter-month').value;
+
+            const monthlyExpenses = transactions.filter(t => t.date.startsWith(selectedMonth) && t.type === 'despesa');
+            const spentPerCategory = {};
+            monthlyExpenses.forEach(t => { spentPerCategory[t.category] = (spentPerCategory[t.category] || 0) + t.amount; });
+
+            const expenseCategories = CATEGORIES.filter(c => c.type === 'despesa' || c.type === 'ambos');
+
+            container.innerHTML = expenseCategories.map(cat => {
+                const limit = budgets[cat.name] || 0;
+                const spent = spentPerCategory[cat.name] || 0;
+                const pct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+
+                let barColor = 'bg-emerald-400';
+                let isAlert = false;
+
+                if (limit > 0) {
+                    if (spent >= limit) {
+                        barColor = 'bg-rose-500';
+                        isAlert = true;
+                    } else if (pct >= 75) {
+                        barColor = 'bg-amber-400';
+                    }
+                }
+
+                return `
+                    <div class="space-y-2 p-4 rounded-xl border border-dark-border bg-slate-950/40">
+                        <div class="flex justify-between items-center text-xs sm:text-sm">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-950 text-xs font-bold" style="background-color: ${cat.color}">
+                                    <i class="fa-solid ${cat.icon}"></i>
+                                </div>
+                                <span class="font-bold text-slate-100">${cat.name}</span>
+                                ${isAlert ? '<span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold px-2 py-0.5 rounded text-[10px] uppercase animate-pulse">LIMITE ESTOURADO</span>' : ''}
+                            </div>
+                            <span class="text-xs sm:text-sm text-slate-300">
+                                ${formatCurrency(spent)} ${limit > 0 ? `/ ${formatCurrency(limit)}` : '<span class="text-slate-500 font-normal">(Sem teto)</span>'}
+                            </span>
+                        </div>
+                        <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-dark-border">
+                            <div class="${barColor} h-full transition-all duration-500" style="width: ${limit > 0 ? pct : (spent > 0 ? 100 : 0)}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openBudgetModal() {
+            const container = document.getElementById('budget-inputs-container');
+            const expenseCategories = CATEGORIES.filter(c => c.type === 'despesa' || c.type === 'ambos');
+
+            container.innerHTML = expenseCategories.map(cat => {
+                const currentVal = budgets[cat.name] || '';
+                return `
+                    <div class="flex items-center justify-between gap-3">
+                        <label class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid ${cat.icon} text-slate-500 w-4"></i>
+                            ${cat.name}
+                        </label>
+                        <div class="relative w-36">
+                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">R$</span>
+                            <input type="number" step="10" min="0" data-cat="${cat.name}" value="${currentVal}" placeholder="0" class="budget-input w-full pl-8 pr-2 py-1.5 bg-dark-input border border-dark-border rounded-lg text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('budget-modal').classList.remove('hidden');
+        }
+
+        function closeBudgetModal() {
+            document.getElementById('budget-modal').classList.add('hidden');
+        }
+
+        function saveBudgets() {
+            document.querySelectorAll('.budget-input').forEach(inp => {
+                const cat = inp.getAttribute('data-cat');
+                budgets[cat] = parseFloat(inp.value) || 0;
+            });
+
+            saveDataToStorage();
+            closeBudgetModal();
+            renderBudgets();
+            showToast('Limites salvos!');
+        }
+
+
+        // ABA 5: CONTROLE FINANCEIRO (DÍVIDAS & SAÚDE)
+        function renderDebtsAndHealth() {
+            const selectedMonth = document.getElementById('filter-month').value;
+            const monthlyTrans = transactions.filter(t => t.date.startsWith(selectedMonth));
+            const income = monthlyTrans.filter(t => t.type === 'receita').reduce((a, b) => a + b.amount, 0);
+            const expenses = monthlyTrans.filter(t => t.type === 'despesa').reduce((a, b) => a + b.amount, 0);
+
+            const totalDebtInstallments = debts.reduce((sum, d) => sum + (d.monthlyInstallment || 0), 0);
+            const totalRemainingDebt = debts.reduce((sum, d) => sum + (d.remainingBalance || 0), 0);
+            const totalOriginalDebt = debts.reduce((sum, d) => sum + (d.totalOriginal || 0), 0);
+
+            const dtiVal = income > 0 ? (totalDebtInstallments / income) * 100 : (totalDebtInstallments > 0 ? 100 : 0);
+            document.getElementById('dti-percentage-val').textContent = `${dtiVal.toFixed(1)}%`;
+
+            const dtiBadge = document.getElementById('dti-status-badge');
+            if (dtiVal < 20) {
+                dtiBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                dtiBadge.textContent = 'Excelente / Seguro';
+            } else if (dtiVal <= 30) {
+                dtiBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+                dtiBadge.textContent = 'Saudável';
+            } else if (dtiVal <= 50) {
+                dtiBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30';
+                dtiBadge.textContent = 'Atenção / Risco';
+            } else {
+                dtiBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse';
+                dtiBadge.textContent = 'Crítico';
+            }
+
+            document.getElementById('total-remaining-debt-val').textContent = formatCurrency(totalRemainingDebt);
+
+            const totalPaid = Math.max(0, totalOriginalDebt - totalRemainingDebt);
+            const quitPct = totalOriginalDebt > 0 ? Math.min(100, Math.round((totalPaid / totalOriginalDebt) * 100)) : 100;
+            document.getElementById('overall-quit-progress-val').textContent = `${quitPct}%`;
+
+            let score = 100;
+            if (dtiVal > 20) score -= Math.min(50, (dtiVal - 20) * 1.5);
+            if (expenses > income && income > 0) score -= 20;
+            if (totalRemainingDebt > (income * 6) && income > 0) score -= 15;
+
+            score = Math.max(0, Math.min(100, Math.round(score)));
+            document.getElementById('health-score-val').textContent = `${score} / 100`;
+
+            const scoreBadge = document.getElementById('health-score-badge');
+            if (score >= 80) {
+                scoreBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                scoreBadge.textContent = 'Excelente';
+            } else if (score >= 60) {
+                scoreBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+                scoreBadge.textContent = 'Bom';
+            } else if (score >= 40) {
+                scoreBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30';
+                scoreBadge.textContent = 'Alerta';
+            } else {
+                scoreBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse';
+                scoreBadge.textContent = 'Risco Alto';
+            }
+
+            renderDebtCards();
+            renderDebtPayoffStrategies();
+        }
+
+        function renderDebtCards() {
+            const container = document.getElementById('debt-cards-list');
+            document.getElementById('debt-count-badge').textContent = `${debts.length} cadastrada${debts.length !== 1 ? 's' : ''}`;
+
+            if (debts.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center bg-slate-950/40 rounded-2xl border border-dark-border">
+                        <div class="w-12 h-12 bg-slate-900 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-slate-300">Nenhuma dívida cadastrada!</h4>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Clique em "Cadastrar Nova Dívida" se possuir empréstimos ou financiamentos.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = debts.map(d => {
+                const paidAmount = Math.max(0, d.totalOriginal - d.remainingBalance);
+                const pctPaid = d.totalOriginal > 0 ? Math.min(100, Math.round((paidAmount / d.totalOriginal) * 100)) : 100;
+                const historyCount = d.paymentHistory ? d.paymentHistory.length : 0;
+
+                return `
+                    <div class="bg-slate-950/60 border border-dark-border rounded-2xl p-5 space-y-4 hover:border-slate-700 transition">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span class="text-[10px] bg-slate-900 border border-dark-border text-slate-400 px-2 py-0.5 rounded-md font-bold uppercase">${d.category}</span>
+                                <h4 class="text-sm font-extrabold text-slate-100 mt-1">${escapeHTML(d.creditor)}</h4>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="openDebtModal('${d.id}')" class="p-1.5 text-slate-500 hover:text-emerald-400 text-xs transition" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="confirmDeleteDebt('${d.id}')" class="p-1.5 text-slate-500 hover:text-rose-400 text-xs transition" title="Excluir">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs bg-slate-900/60 p-3 rounded-xl border border-dark-border/60">
+                            <div>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">Saldo Devedor</p>
+                                <p class="font-extrabold text-rose-400 text-sm">${formatCurrency(d.remainingBalance)}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">Parcela Mensal</p>
+                                <p class="font-extrabold text-slate-200 text-sm">${formatCurrency(d.monthlyInstallment)}</p>
+                            </div>
+                            <div class="pt-1">
+                                <p class="text-[10px] text-slate-500">Juros: <b>${d.interestRate}% a.m.</b></p>
+                            </div>
+                            <div class="pt-1">
+                                <p class="text-[10px] text-slate-500">Vencimento: <b>Dia ${d.dueDay}</b></p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] text-slate-400 font-semibold">
+                                <span>Progresso de Quitação</span>
+                                <span>${pctPaid}% (${formatCurrency(paidAmount)} pago)</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-dark-border">
+                                <div class="bg-cyan-400 h-full transition-all duration-500" style="width: ${pctPaid}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <button onclick="openPayInstallmentModal('${d.id}')" class="py-2 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-money-bill-wave"></i> Pagar Parcela
+                            </button>
+                            <button onclick="openDebtHistoryModal('${d.id}')" class="py-2 px-3 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-dark-border rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-receipt text-cyan-400"></i> Recibos (${historyCount})
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderDebtPayoffStrategies() {
+            const snowballContainer = document.getElementById('snowball-list');
+            const avalancheContainer = document.getElementById('avalanche-list');
+
+            if (debts.length === 0) {
+                snowballContainer.innerHTML = '<p class="text-xs text-slate-500">Nenhuma dívida para priorizar.</p>';
+                avalancheContainer.innerHTML = '<p class="text-xs text-slate-500">Nenhuma dívida para priorizar.</p>';
+                return;
+            }
+
+            const snowball = [...debts].sort((a, b) => a.remainingBalance - b.remainingBalance);
+            snowballContainer.innerHTML = snowball.map((d, i) => `
+                <div class="flex items-center justify-between p-2.5 bg-slate-900 rounded-xl border border-dark-border text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold text-[10px] flex items-center justify-center shrink-0">${i + 1}</span>
+                        <span class="font-bold text-slate-200">${escapeHTML(d.creditor)}</span>
+                    </div>
+                    <span class="font-extrabold text-cyan-400">${formatCurrency(d.remainingBalance)}</span>
+                </div>
+            `).join('');
+
+            const avalanche = [...debts].sort((a, b) => b.interestRate - a.interestRate);
+            avalancheContainer.innerHTML = avalanche.map((d, i) => `
+                <div class="flex items-center justify-between p-2.5 bg-slate-900 rounded-xl border border-dark-border text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 font-extrabold text-[10px] flex items-center justify-center shrink-0">${i + 1}</span>
+                        <span class="font-bold text-slate-200">${escapeHTML(d.creditor)}</span>
+                    </div>
+                    <span class="font-extrabold text-rose-400">${d.interestRate}% a.m.</span>
+                </div>
+            `).join('');
+        }
+
+        function openDebtModal(id = null) {
+            const form = document.getElementById('debt-form');
+            form.reset();
+
+            if (id) {
+                const d = debts.find(item => item.id === id);
+                if (d) {
+                    document.getElementById('debt-id').value = d.id;
+                    document.getElementById('debt-creditor').value = d.creditor;
+                    document.getElementById('debt-total-original').value = d.totalOriginal;
+                    document.getElementById('debt-remaining').value = d.remainingBalance;
+                    document.getElementById('debt-installment').value = d.monthlyInstallment;
+                    document.getElementById('debt-interest').value = d.interestRate;
+                    document.getElementById('debt-dueday').value = d.dueDay;
+                    document.getElementById('debt-category').value = d.category;
+                }
+            } else {
+                document.getElementById('debt-id').value = '';
+            }
+
+            document.getElementById('debt-modal').classList.remove('hidden');
+        }
+
+        function closeDebtModal() {
+            document.getElementById('debt-modal').classList.add('hidden');
+        }
+
+        function handleDebtFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('debt-id').value;
+            const creditor = document.getElementById('debt-creditor').value.trim();
+            const totalOriginal = parseFloat(document.getElementById('debt-total-original').value);
+            const remainingBalance = parseFloat(document.getElementById('debt-remaining').value);
+            const monthlyInstallment = parseFloat(document.getElementById('debt-installment').value);
+            const interestRate = parseFloat(document.getElementById('debt-interest').value) || 0;
+            const dueDay = parseInt(document.getElementById('debt-dueday').value);
+            const category = document.getElementById('debt-category').value;
+
+            if (id) {
+                const idx = debts.findIndex(d => d.id === id);
+                if (idx !== -1) {
+                    debts[idx] = { ...debts[idx], creditor, totalOriginal, remainingBalance, monthlyInstallment, interestRate, dueDay, category };
+                }
+            } else {
+                debts.push({
+                    id: 'dbt_' + Date.now(),
+                    creditor, totalOriginal, remainingBalance, monthlyInstallment, interestRate, dueDay, category,
+                    paymentHistory: []
+                });
+            }
+
+            saveDataToStorage();
+            closeDebtModal();
+            renderApp();
+            showToast('Dívida salva com sucesso!');
+        }
+
+        function confirmDeleteDebt(id) {
+            showConfirmModal(
+                'Excluir Dívida',
+                'Tem certeza que deseja remover esta dívida do controle?',
+                () => {
+                    debts = debts.filter(d => d.id !== id);
+                    saveDataToStorage();
+                    renderApp();
+                    showToast('Dívida removida.', 'info');
+                }
+            );
+        }
+
+        function openPayInstallmentModal(debtId) {
+            const d = debts.find(item => item.id === debtId);
+            if (!d) return;
+
+            document.getElementById('pay-debt-id').value = d.id;
+            document.getElementById('pay-debt-name').textContent = d.creditor;
+            document.getElementById('pay-debt-current-remaining').textContent = formatCurrency(d.remainingBalance);
+            document.getElementById('pay-amount').value = d.monthlyInstallment;
+            document.getElementById('pay-receipt-file').value = '';
+
+            document.getElementById('pay-installment-modal').classList.remove('hidden');
+        }
+
+        function closePayInstallmentModal() {
+            document.getElementById('pay-installment-modal').classList.add('hidden');
+        }
+
+        // REGISTRO DE PAGAMENTO COM PROCESSAMENTO DE COMPROVANTE (BASE64)
+        function handlePayInstallmentSubmit(e) {
+            e.preventDefault();
+            const debtId = document.getElementById('pay-debt-id').value;
+            const payAmount = parseFloat(document.getElementById('pay-amount').value);
+            const addTrans = document.getElementById('pay-add-transaction').checked;
+            const fileInput = document.getElementById('pay-receipt-file');
+            const file = fileInput.files[0];
+
+            const dIdx = debts.findIndex(d => d.id === debtId);
+            if (dIdx !== -1 && payAmount > 0) {
+                const d = debts[dIdx];
+                if (!d.paymentHistory) d.paymentHistory = [];
+
+                const finalizePayment = (receiptData = null, receiptName = null) => {
+                    d.remainingBalance = Math.max(0, d.remainingBalance - payAmount);
+
+                    const payRecord = {
+                        id: 'pay_' + Date.now(),
+                        date: new Date().toISOString().slice(0, 10),
+                        amount: payAmount,
+                        receiptName: receiptName,
+                        receiptData: receiptData
+                    };
+
+                    d.paymentHistory.push(payRecord);
+
+                    if (addTrans) {
+                        const today = new Date().toISOString().slice(0, 10);
+                        transactions.push({
+                            id: 'tr_pay_' + Date.now(),
+                            description: `Pagamento Parcela: ${d.creditor}`,
+                            amount: payAmount,
+                            date: today,
+                            category: 'Dívidas & Empréstimos',
+                            paymentMethod: 'PIX',
+                            type: 'despesa'
+                        });
+                    }
+
+                    saveDataToStorage();
+                    closePayInstallmentModal();
+                    renderApp();
+                    showToast(`Pagamento de ${formatCurrency(payAmount)} registrado!`);
+                };
+
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        finalizePayment(evt.target.result, file.name);
+                    };
+                    reader.onerror = function() {
+                        showToast('Erro ao ler arquivo de comprovante.', 'error');
+                        finalizePayment();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    finalizePayment();
+                }
+            }
+        }
+
+        // MODAL E VISUALIZAÇÃO DE HISTÓRICO DE COMPROVANTES
+        function openDebtHistoryModal(debtId) {
+            const d = debts.find(item => item.id === debtId);
+            if (!d) return;
+
+            document.getElementById('history-modal-creditor').textContent = d.creditor;
+            const history = d.paymentHistory || [];
+            document.getElementById('history-modal-count').textContent = `${history.length} pagamento${history.length !== 1 ? 's' : ''}`;
+
+            const list = document.getElementById('debt-payments-history-list');
+
+            if (history.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Nenhum histórico de pagamento registrado ainda.</p>`;
+            } else {
+                list.innerHTML = [...history].reverse().map(p => `
+                    <div class="p-3 bg-slate-950 rounded-xl border border-dark-border flex items-center justify-between gap-3 text-xs">
+                        <div>
+                            <p class="font-bold text-slate-200">${formatCurrency(p.amount)}</p>
+                            <p class="text-[10px] text-slate-500">Pago em ${formatDateBR(p.date)}</p>
+                        </div>
+                        <div>
+                            ${p.receiptData ? `
+                                <button onclick="viewReceipt('${p.id}', '${d.id}')" class="px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-file-pdf"></i> Ver Recibo
+                                </button>
+                            ` : `
+                                <span class="text-[10px] text-slate-600 font-medium">Sem anexo</span>
+                            `}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('debt-history-modal').classList.remove('hidden');
+        }
+
+        function closeDebtHistoryModal() {
+            document.getElementById('debt-history-modal').classList.add('hidden');
+        }
+
+        function viewReceipt(payId, debtId) {
+            const d = debts.find(item => item.id === debtId);
+            if (!d || !d.paymentHistory) return;
+
+            const pay = d.paymentHistory.find(p => p.id === payId);
+            if (!pay || !pay.receiptData) return showToast('Comprovante não encontrado.', 'error');
+
+            const win = window.open();
+            if (win) {
+                if (pay.receiptData.startsWith('data:application/pdf')) {
+                    win.document.write(`<title>${escapeHTML(pay.receiptName || 'Comprovante')}</title><iframe src="${pay.receiptData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                } else {
+                    win.document.write(`<title>${escapeHTML(pay.receiptName || 'Comprovante')}</title><body style="margin:0; background:#020617; display:flex; justify-content:center; align-items:center; min-height:100vh;"><img src="${pay.receiptData}" style="max-width:90%; max-height:90vh; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);" /></body>`);
+                }
+            } else {
+                showToast('Permita pop-ups no navegador para visualizar o comprovante.', 'error');
+            }
+        }
+
+
+        // ABA 6: METAS & OBJETIVOS
+        function renderGoalsView() {
+            const totalTarget = goals.reduce((sum, g) => sum + (g.targetAmount || 0), 0);
+            const totalCurrent = goals.reduce((sum, g) => sum + (g.currentAmount || 0), 0);
+            const totalRemaining = Math.max(0, totalTarget - totalCurrent);
+
+            const overallPct = totalTarget > 0 ? Math.min(100, Math.round((totalCurrent / totalTarget) * 100)) : 0;
+
+            document.getElementById('goals-total-target').textContent = formatCurrency(totalTarget);
+            document.getElementById('goals-total-current').textContent = formatCurrency(totalCurrent);
+            document.getElementById('goals-total-remaining').textContent = formatCurrency(totalRemaining);
+            document.getElementById('goals-overall-pct').textContent = `${overallPct}%`;
+
+            const container = document.getElementById('goals-cards-grid');
+            document.getElementById('goals-count-badge').textContent = `${goals.length} meta${goals.length !== 1 ? 's' : ''}`;
+
+            if (goals.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center bg-slate-950/40 rounded-2xl border border-dark-border">
+                        <div class="w-12 h-12 bg-slate-900 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-slate-300">Nenhuma meta criada ainda!</h4>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Clique em "+ Nova Meta" para definir seu primeiro objetivo financeiro.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const today = new Date();
+
+            container.innerHTML = goals.map(g => {
+                const conf = GOAL_CATEGORIES_CONFIG[g.category] || GOAL_CATEGORIES_CONFIG['Outro'];
+                const remaining = Math.max(0, g.targetAmount - g.currentAmount);
+                const pct = g.targetAmount > 0 ? Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100)) : 0;
+
+                const targetDate = new Date(g.targetDate);
+                const monthDiff = (targetDate.getFullYear() - today.getFullYear()) * 12 + (targetDate.getMonth() - today.getMonth());
+                const monthsLeft = Math.max(1, monthDiff);
+                const requiredMonthly = remaining > 0 ? (remaining / monthsLeft) : 0;
+
+                let priorityClass = 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+                if (g.priority === 'Alta') priorityClass = 'bg-rose-500/20 text-rose-300 border-rose-500/30 font-bold';
+                if (g.priority === 'Média') priorityClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold';
+                if (g.priority === 'Baixa') priorityClass = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-bold';
+
+                return `
+                    <div class="bg-dark-card border border-dark-border rounded-2xl p-5 space-y-4 hover:border-slate-700 transition flex flex-col justify-between relative overflow-hidden">
+                        <div class="space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-950 font-bold text-sm shrink-0" style="background-color: ${conf.color}">
+                                        <i class="fa-solid ${conf.icon}"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-extrabold text-slate-100">${escapeHTML(g.title)}</h4>
+                                        <p class="text-[10px] text-slate-400">${g.category}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[9px] px-2 py-0.5 rounded-full border ${priorityClass}">${g.priority}</span>
+                                    <button onclick="openGoalModal('${g.id}')" class="p-1 text-slate-500 hover:text-indigo-400 text-xs transition">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button onclick="confirmDeleteGoal('${g.id}')" class="p-1 text-slate-500 hover:text-rose-400 text-xs transition">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs font-bold">
+                                    <span class="text-emerald-400">${formatCurrency(g.currentAmount)}</span>
+                                    <span class="text-slate-400">${formatCurrency(g.targetAmount)}</span>
+                                </div>
+                                <div class="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-dark-border p-0.5">
+                                    <div class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-slate-500 pt-0.5">
+                                    <span>${pct}% Concluído</span>
+                                    <span>Faltam ${formatCurrency(remaining)}</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-950/60 p-3 rounded-xl border border-dark-border/60 text-[11px] space-y-1">
+                                <p class="text-slate-400 flex justify-between">
+                                    <span>Prazo Alvo:</span>
+                                    <b class="text-slate-200">${formatDateBR(g.targetDate)}</b>
+                                </p>
+                                ${remaining > 0 ? `
+                                    <p class="text-indigo-300 font-medium flex justify-between">
+                                        <span>Aporte Mensal Est.:</span>
+                                        <b>${formatCurrency(requiredMonthly)} /mês</b>
+                                    </p>
+                                ` : `
+                                    <p class="text-emerald-400 font-bold flex items-center gap-1">
+                                        <i class="fa-solid fa-circle-check"></i> Meta Concluída!
+                                    </p>
+                                `}
+                            </div>
+                        </div>
+
+                        <button onclick="openGoalDepositModal('${g.id}')" class="w-full py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 mt-2">
+                            <i class="fa-solid fa-piggy-bank"></i> Aportar / Resgatar
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openGoalModal(id = null) {
+            const form = document.getElementById('goal-form');
+            form.reset();
+
+            if (id) {
+                const g = goals.find(item => item.id === id);
+                if (g) {
+                    document.getElementById('goal-id').value = g.id;
+                    document.getElementById('goal-title').value = g.title;
+                    document.getElementById('goal-category').value = g.category;
+                    document.getElementById('goal-priority').value = g.priority;
+                    document.getElementById('goal-target-amount').value = g.targetAmount;
+                    document.getElementById('goal-current-amount').value = g.currentAmount;
+                    document.getElementById('goal-target-date').value = g.targetDate;
+                }
+            } else {
+                document.getElementById('goal-id').value = '';
+                const today = new Date();
+                document.getElementById('goal-target-date').value = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()).toISOString().slice(0, 10);
+            }
+
+            document.getElementById('goal-modal').classList.remove('hidden');
+        }
+
+        function closeGoalModal() {
+            document.getElementById('goal-modal').classList.add('hidden');
+        }
+
+        function handleGoalFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('goal-id').value;
+            const title = document.getElementById('goal-title').value.trim();
+            const category = document.getElementById('goal-category').value;
+            const priority = document.getElementById('goal-priority').value;
+            const targetAmount = parseFloat(document.getElementById('goal-target-amount').value);
+            const currentAmount = parseFloat(document.getElementById('goal-current-amount').value) || 0;
+            const targetDate = document.getElementById('goal-target-date').value;
+
+            if (id) {
+                const idx = goals.findIndex(g => g.id === id);
+                if (idx !== -1) {
+                    goals[idx] = { id, title, category, priority, targetAmount, currentAmount, targetDate };
+                }
+            } else {
+                goals.push({
+                    id: 'gol_' + Date.now(),
+                    title, category, priority, targetAmount, currentAmount, targetDate
+                });
+            }
+
+            saveDataToStorage();
+            closeGoalModal();
+            renderApp();
+            showToast('Meta salva com sucesso!');
+        }
+
+        function confirmDeleteGoal(id) {
+            showConfirmModal(
+                'Excluir Meta',
+                'Tem certeza que deseja remover esta meta?',
+                () => {
+                    goals = goals.filter(g => g.id !== id);
+                    saveDataToStorage();
+                    renderApp();
+                    showToast('Meta excluída.', 'info');
+                }
+            );
+        }
+
+        function openGoalDepositModal(goalId) {
+            const g = goals.find(item => item.id === goalId);
+            if (!g) return;
+
+            document.getElementById('deposit-goal-id').value = g.id;
+            document.getElementById('deposit-goal-name').textContent = g.title;
+            document.getElementById('deposit-goal-current').textContent = formatCurrency(g.currentAmount);
+            document.getElementById('deposit-amount').value = '';
+            setDepositOpType('aporte');
+
+            document.getElementById('goal-deposit-modal').classList.remove('hidden');
+        }
+
+        function closeGoalDepositModal() {
+            document.getElementById('goal-deposit-modal').classList.add('hidden');
+        }
+
+        function setDepositOpType(type) {
+            document.getElementById('deposit-op-type').value = type;
+            const btnAporte = document.getElementById('btn-op-aporte');
+            const btnResgate = document.getElementById('btn-op-resgate');
+
+            if (type === 'aporte') {
+                btnAporte.className = 'py-2.5 rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition';
+                btnResgate.className = 'py-2.5 rounded-lg text-slate-400 transition';
+            } else {
+                btnResgate.className = 'py-2.5 rounded-lg text-rose-400 bg-rose-500/10 border border-rose-500/30 transition';
+                btnAporte.className = 'py-2.5 rounded-lg text-slate-400 transition';
+            }
+        }
+
+        function handleGoalDepositSubmit(e) {
+            e.preventDefault();
+            const goalId = document.getElementById('deposit-goal-id').value;
+            const opType = document.getElementById('deposit-op-type').value;
+            const amount = parseFloat(document.getElementById('deposit-amount').value);
+            const syncTrans = document.getElementById('deposit-sync-transaction').checked;
+
+            const idx = goals.findIndex(g => g.id === goalId);
+            if (idx !== -1 && amount > 0) {
+                const g = goals[idx];
+
+                if (opType === 'aporte') {
+                    g.currentAmount += amount;
+                } else {
+                    g.currentAmount = Math.max(0, g.currentAmount - amount);
+                }
+
+                if (syncTrans) {
+                    const today = new Date().toISOString().slice(0, 10);
+                    transactions.push({
+                        id: 'tr_goal_' + Date.now(),
+                        description: `${opType === 'aporte' ? 'Aporte' : 'Resgate'} Meta: ${g.title}`,
+                        amount: amount,
+                        date: today,
+                        category: 'Investimentos',
+                        paymentMethod: 'PIX',
+                        type: opType === 'aporte' ? 'despesa' : 'receita'
+                    });
+                }
+
+                saveDataToStorage();
+                closeGoalDepositModal();
+                renderApp();
+                showToast(`Operação de ${formatCurrency(amount)} realizada na meta!`);
+            }
+        }
+
+
+        // DADOS DEMO E BACKUP
+        function loadDemoData(showNotification = true) {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+
+            transactions = [
+                { id: 'd1', description: 'Salário Dev Sr', amount: 8500.00, date: `${y}-${m}-05`, category: 'Salário', paymentMethod: 'Transferência', type: 'receita' },
+                { id: 'd2', description: 'Consultoria Freelance', amount: 2200.00, date: `${y}-${m}-12`, category: 'Freelance', paymentMethod: 'PIX', type: 'receita' },
+                { id: 'd3', description: 'Aluguel & Condomínio', amount: 2400.00, date: `${y}-${m}-08`, category: 'Moradia', paymentMethod: 'PIX', type: 'despesa' },
+                { id: 'd4', description: 'Supermercado Mensal', amount: 1350.00, date: `${y}-${m}-10`, category: 'Alimentação', paymentMethod: 'Cartão de Crédito', type: 'despesa' },
+                { id: 'd5', description: 'Combustível Carro', amount: 350.00, date: `${y}-${m}-14`, category: 'Transporte', paymentMethod: 'PIX', type: 'despesa' },
+                { id: 'd6', description: 'Aporte Reserva Emergência', amount: 1000.00, date: `${y}-${m}-15`, category: 'Investimentos', paymentMethod: 'PIX', type: 'despesa' }
+            ];
+
+            budgets = { 'Alimentação': 1500, 'Lazer': 600, 'Moradia': 2500, 'Transporte': 500 };
+
+            debts = [
+                { id: 'db1', creditor: 'Financiamento Veículo', totalOriginal: 48000.00, remainingBalance: 21000.00, monthlyInstallment: 1080.00, interestRate: 1.35, dueDay: 10, category: 'Financiamento de Veículo', paymentHistory: [] },
+                { id: 'db2', creditor: 'Cartão de Crédito Nubank', totalOriginal: 8000.00, remainingBalance: 2800.00, monthlyInstallment: 450.00, interestRate: 4.20, dueDay: 15, category: 'Cartão de Crédito', paymentHistory: [] }
+            ];
+
+            goals = [
+                { id: 'g1', title: 'Reserva de Emergência', category: 'Reserva de Emergência', priority: 'Alta', targetAmount: 25000.00, currentAmount: 11500.00, targetDate: `${y + 1}-12-31` },
+                { id: 'g2', title: 'Viagem de Férias Europa', category: 'Viagem & Lazer', priority: 'Média', targetAmount: 15000.00, currentAmount: 4200.00, targetDate: `${y + 1}-07-15` },
+                { id: 'g3', title: 'Entrada Carro Novo', category: 'Veículo', priority: 'Baixa', targetAmount: 30000.00, currentAmount: 6000.00, targetDate: `${y + 2}-06-30` }
+            ];
+
+            saveDataToStorage();
+            renderApp();
+            if (showNotification) showToast('Dados demonstrativos carregados com Sucesso!');
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ transactions, budgets, debts, goals }, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `FinanFlow_Backup_${new Date().toISOString().slice(0,10)}.json`);
+            dl.click();
+            showToast('Backup JSON baixado!');
+        }
+
+        function exportCSV() {
+            if (transactions.length === 0) return showToast('Sem dados para exportar.', 'error');
+
+            let csv = "\uFEFFID;Descrição;Valor;Tipo;Categoria;Data;Pagamento\n";
+            transactions.forEach(t => {
+                csv += `"${t.id}";"${t.description}";"${t.amount.toFixed(2).replace('.',',')}";"${t.type}";"${t.category}";"${t.date}";"${t.paymentMethod}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `FinanFlow_Export_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            showToast('Planilha CSV baixada!');
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.transactions && Array.isArray(data.transactions)) {
+                        transactions = data.transactions;
+                        budgets = data.budgets || {};
+                        debts = data.debts || [];
+                        goals = data.goals || [];
+                        saveDataToStorage();
+                        renderApp();
+                        showToast('Dados restaurados com sucesso!');
+                    } else {
+                        showToast('Arquivo JSON com estrutura inválida.', 'error');
+                    }
+                } catch (err) {
+                    showToast('Erro ao ler arquivo.', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function confirmResetAll() {
+            showConfirmModal(
+                'Zerar Todos os Dados',
+                'Esta ação apagará permanentemente todos os lançamentos, dívidas, metas e orçamentos configurados.',
+                () => {
+                    transactions = [];
+                    budgets = {};
+                    debts = [];
+                    goals = [];
+                    saveDataToStorage();
+                    renderApp();
+                    showToast('Todos os dados foram excluídos.', 'info');
+                }
+            );
+        }
+
+        // FORMATADORES E NOTIFICAÇÕES TOAST
+        function formatCurrency(val) {
+            if (isPrivacyMode) return 'R$ •••••';
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+        }
+
+        function formatDateBR(dateStr) {
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        function formatMonthLabel(yearMonthStr) {
+            if (!yearMonthStr) return '';
+            const [y, m] = yearMonthStr.split('-');
+            const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            return `${months[parseInt(m) - 1]}/${y.slice(2)}`;
+        }
+
+        function getLast6MonthsList() {
+            const list = [];
+            const curr = new Date();
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(curr.getFullYear(), curr.getMonth() - i, 1);
+                list.push(d.toISOString().slice(0, 7));
+            }
+            return list;
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const borderClass = type === 'success' ? 'border-emerald-500/40 text-emerald-400' : (type === 'error' ? 'border-rose-500/40 text-rose-400' : 'border-cyan-500/40 text-cyan-400');
+            const icon = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-circle-xmark' : 'fa-circle-info');
+
+            toast.className = `bg-dark-card border ${borderClass} px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-bold transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i> <span class="text-slate-100">${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function showConfirmModal(title, msg, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-msg').textContent = msg;
+
+            const okBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            const handleConfirm = () => {
+                onConfirm();
+                close();
+            };
+
+            const close = () => {
+                modal.classList.add('hidden');
+                okBtn.removeEventListener('click', handleConfirm);
+            };
+
+            cancelBtn.onclick = close;
+            okBtn.onclick = handleConfirm;
+
+            modal.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
